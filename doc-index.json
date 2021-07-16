@@ -2268,6 +2268,30 @@
     "link": "cardano-api/Cardano-Api-ProtocolParameters.html#v:fromAlonzoPrices"
   },
   {
+    "display_html": "<a href=\"#v:toAlonzoScriptLanguage\">toAlonzoScriptLanguage</a> &#8759; <a href=\"Cardano-Api-Script.html#t:AnyPlutusScriptVersion\" title=\"Cardano.Api.Script\">AnyPlutusScriptVersion</a> &#8594; Language",
+    "name": "toAlonzoScriptLanguage",
+    "module": "Cardano.Api.ProtocolParameters",
+    "link": "cardano-api/Cardano-Api-ProtocolParameters.html#v:toAlonzoScriptLanguage"
+  },
+  {
+    "display_html": "<a href=\"#v:fromAlonzoScriptLanguage\">fromAlonzoScriptLanguage</a> &#8759; Language &#8594; <a href=\"Cardano-Api-Script.html#t:AnyPlutusScriptVersion\" title=\"Cardano.Api.Script\">AnyPlutusScriptVersion</a>",
+    "name": "fromAlonzoScriptLanguage",
+    "module": "Cardano.Api.ProtocolParameters",
+    "link": "cardano-api/Cardano-Api-ProtocolParameters.html#v:fromAlonzoScriptLanguage"
+  },
+  {
+    "display_html": "<a href=\"#v:toAlonzoCostModel\">toAlonzoCostModel</a> &#8759; <a href=\"Cardano-Api-ProtocolParameters.html#t:CostModel\" title=\"Cardano.Api.ProtocolParameters\">CostModel</a> &#8594; CostModel",
+    "name": "toAlonzoCostModel",
+    "module": "Cardano.Api.ProtocolParameters",
+    "link": "cardano-api/Cardano-Api-ProtocolParameters.html#v:toAlonzoCostModel"
+  },
+  {
+    "display_html": "<a href=\"#v:fromAlonzoCostModel\">fromAlonzoCostModel</a> &#8759; CostModel &#8594; <a href=\"Cardano-Api-ProtocolParameters.html#t:CostModel\" title=\"Cardano.Api.ProtocolParameters\">CostModel</a>",
+    "name": "fromAlonzoCostModel",
+    "module": "Cardano.Api.ProtocolParameters",
+    "link": "cardano-api/Cardano-Api-ProtocolParameters.html#v:fromAlonzoCostModel"
+  },
+  {
     "display_html": "<span class=\"keyword\">data family</span> <a href=\"#t:AsType\">AsType</a> t",
     "name": "AsType AsByronAddr AsShelleyAddr AsByronAddress AsShelleyAddress AsAddress AsAddressAny AsAddressInEra AsStakeAddress AsByronEra AsShelleyEra AsAllegraEra AsMaryEra AsAlonzoEra AsByron AsShelley AsAllegra AsMary AsHash AsVerificationKey AsSigningKey AsTextEnvelope AsTxMetadata AsPaymentKey AsPaymentExtendedKey AsStakeKey AsStakeExtendedKey AsGenesisKey AsGenesisExtendedKey AsGenesisDelegateKey AsGenesisDelegateExtendedKey AsGenesisUTxOKey AsStakePoolKey AsScriptData AsSimpleScriptV1 AsSimpleScriptV2 AsPlutusScriptV1 AsScript AsScriptInAnyLang AsScriptInEra AsScriptHash AsSimpleScript AsPlutusScript AsByronKey AsByronKeyLegacy AsKesKey AsVrfKey AsStakePoolMetadata AsPolicyId AsAssetName AsPraosNonce AsUpdateProposal",
     "module": "Cardano.Api.ProtocolParameters",
@@ -2470,6 +2494,12 @@
     "name": "TxOutValue TxOutValue TxOutAdaOnly",
     "module": "Cardano.Api.TxBody",
     "link": "cardano-api/Cardano-Api-TxBody.html#t:TxOutValue"
+  },
+  {
+    "display_html": "<a href=\"#v:lovelaceToTxOutValue\">lovelaceToTxOutValue</a> &#8759; <a href=\"Cardano-Api-Eras.html#t:IsCardanoEra\" title=\"Cardano.Api.Eras\">IsCardanoEra</a> era &#8658; <a href=\"Cardano-Api-Value.html#t:Lovelace\" title=\"Cardano.Api.Value\">Lovelace</a> &#8594; <a href=\"Cardano-Api-TxBody.html#t:TxOutValue\" title=\"Cardano.Api.TxBody\">TxOutValue</a> era",
+    "name": "lovelaceToTxOutValue",
+    "module": "Cardano.Api.TxBody",
+    "link": "cardano-api/Cardano-Api-TxBody.html#v:lovelaceToTxOutValue"
   },
   {
     "display_html": "<a href=\"#v:serialiseAddressForTxOut\">serialiseAddressForTxOut</a> &#8759; <a href=\"Cardano-Api-Address.html#t:AddressInEra\" title=\"Cardano.Api.Address\">AddressInEra</a> era &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/text-1.2.4.1/Data-Text.html#t:Text\" title=\"Data.Text\">Text</a>",
@@ -2742,6 +2772,30 @@
     "link": "cardano-api/Cardano-Api-TxBody.html#v:updateProposalSupportedInEra"
   },
   {
+    "display_html": "<span class=\"keyword\">data</span> <a href=\"#t:AnyScriptWitness\">AnyScriptWitness</a> era <span class=\"keyword\">where</span><ul class=\"subs\"><li><a href=\"#v:AnyScriptWitness\">AnyScriptWitness</a> &#8759; <a href=\"Cardano-Api-Script.html#t:ScriptWitness\" title=\"Cardano.Api.Script\">ScriptWitness</a> witctx era &#8594; <a href=\"Cardano-Api-TxBody.html#t:AnyScriptWitness\" title=\"Cardano.Api.TxBody\">AnyScriptWitness</a> era</li></ul>",
+    "name": "AnyScriptWitness AnyScriptWitness",
+    "module": "Cardano.Api.TxBody",
+    "link": "cardano-api/Cardano-Api-TxBody.html#t:AnyScriptWitness"
+  },
+  {
+    "display_html": "<span class=\"keyword\">data</span> <a href=\"#t:ScriptWitnessIndex\">ScriptWitnessIndex</a><ul class=\"subs\"><li>= <a href=\"#v:ScriptWitnessIndexTxIn\">ScriptWitnessIndexTxIn</a> !<a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Word\" title=\"Distribution.Compat.Prelude.Internal\">Word</a></li><li>| <a href=\"#v:ScriptWitnessIndexMint\">ScriptWitnessIndexMint</a> !<a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Word\" title=\"Distribution.Compat.Prelude.Internal\">Word</a></li><li>| <a href=\"#v:ScriptWitnessIndexCertificate\">ScriptWitnessIndexCertificate</a> !<a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Word\" title=\"Distribution.Compat.Prelude.Internal\">Word</a></li><li>| <a href=\"#v:ScriptWitnessIndexWithdrawal\">ScriptWitnessIndexWithdrawal</a> !<a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Word\" title=\"Distribution.Compat.Prelude.Internal\">Word</a></li></ul>",
+    "name": "ScriptWitnessIndex ScriptWitnessIndexTxIn ScriptWitnessIndexMint ScriptWitnessIndexCertificate ScriptWitnessIndexWithdrawal",
+    "module": "Cardano.Api.TxBody",
+    "link": "cardano-api/Cardano-Api-TxBody.html#t:ScriptWitnessIndex"
+  },
+  {
+    "display_html": "<a href=\"#v:collectTxBodyScriptWitnesses\">collectTxBodyScriptWitnesses</a> &#8759; &#8704; era. <a href=\"Cardano-Api-TxBody.html#t:TxBodyContent\" title=\"Cardano.Api.TxBody\">TxBodyContent</a> <a href=\"Cardano-Api-TxBody.html#t:BuildTx\" title=\"Cardano.Api.TxBody\">BuildTx</a> era &#8594; [(<a href=\"Cardano-Api-TxBody.html#t:ScriptWitnessIndex\" title=\"Cardano.Api.TxBody\">ScriptWitnessIndex</a>, <a href=\"Cardano-Api-TxBody.html#t:AnyScriptWitness\" title=\"Cardano.Api.TxBody\">AnyScriptWitness</a> era)]",
+    "name": "collectTxBodyScriptWitnesses",
+    "module": "Cardano.Api.TxBody",
+    "link": "cardano-api/Cardano-Api-TxBody.html#v:collectTxBodyScriptWitnesses"
+  },
+  {
+    "display_html": "<a href=\"#v:mapTxScriptWitnesses\">mapTxScriptWitnesses</a> &#8759; &#8704; era. (&#8704; witctx. <a href=\"Cardano-Api-TxBody.html#t:ScriptWitnessIndex\" title=\"Cardano.Api.TxBody\">ScriptWitnessIndex</a> &#8594; <a href=\"Cardano-Api-Script.html#t:ScriptWitness\" title=\"Cardano.Api.Script\">ScriptWitness</a> witctx era &#8594; <a href=\"Cardano-Api-Script.html#t:ScriptWitness\" title=\"Cardano.Api.Script\">ScriptWitness</a> witctx era) &#8594; <a href=\"Cardano-Api-TxBody.html#t:TxBodyContent\" title=\"Cardano.Api.TxBody\">TxBodyContent</a> <a href=\"Cardano-Api-TxBody.html#t:BuildTx\" title=\"Cardano.Api.TxBody\">BuildTx</a> era &#8594; <a href=\"Cardano-Api-TxBody.html#t:TxBodyContent\" title=\"Cardano.Api.TxBody\">TxBodyContent</a> <a href=\"Cardano-Api-TxBody.html#t:BuildTx\" title=\"Cardano.Api.TxBody\">BuildTx</a> era",
+    "name": "mapTxScriptWitnesses",
+    "module": "Cardano.Api.TxBody",
+    "link": "cardano-api/Cardano-Api-TxBody.html#v:mapTxScriptWitnesses"
+  },
+  {
     "display_html": "<a href=\"#v:toShelleyTxId\">toShelleyTxId</a> &#8759; <a href=\"Cardano-Api-TxBody.html#t:TxId\" title=\"Cardano.Api.TxBody\">TxId</a> &#8594; TxId StandardCrypto",
     "name": "toShelleyTxId",
     "module": "Cardano.Api.TxBody",
@@ -2754,7 +2808,7 @@
     "link": "cardano-api/Cardano-Api-TxBody.html#v:toShelleyTxIn"
   },
   {
-    "display_html": "<a href=\"#v:toShelleyTxOut\">toShelleyTxOut</a> &#8759; &#8704; era ledgerera. (<a href=\"Cardano-Api-Eras.html#t:ShelleyLedgerEra\" title=\"Cardano.Api.Eras\">ShelleyLedgerEra</a> era ~ ledgerera, <a href=\"Cardano-Api-Eras.html#t:IsShelleyBasedEra\" title=\"Cardano.Api.Eras\">IsShelleyBasedEra</a> era, ShelleyBased ledgerera) &#8658; <a href=\"Cardano-Api-TxBody.html#t:TxOut\" title=\"Cardano.Api.TxBody\">TxOut</a> era &#8594; TxOut ledgerera",
+    "display_html": "<a href=\"#v:toShelleyTxOut\">toShelleyTxOut</a> &#8759; &#8704; era ledgerera. <a href=\"Cardano-Api-Eras.html#t:ShelleyLedgerEra\" title=\"Cardano.Api.Eras\">ShelleyLedgerEra</a> era ~ ledgerera &#8658; <a href=\"Cardano-Api-Eras.html#t:ShelleyBasedEra\" title=\"Cardano.Api.Eras\">ShelleyBasedEra</a> era &#8594; <a href=\"Cardano-Api-TxBody.html#t:TxOut\" title=\"Cardano.Api.TxBody\">TxOut</a> era &#8594; TxOut ledgerera",
     "name": "toShelleyTxOut",
     "module": "Cardano.Api.TxBody",
     "link": "cardano-api/Cardano-Api-TxBody.html#v:toShelleyTxOut"
@@ -2772,28 +2826,46 @@
     "link": "cardano-api/Cardano-Api-TxBody.html#v:fromShelleyTxIn"
   },
   {
-    "display_html": "<a href=\"#v:fromShelleyTxOut\">fromShelleyTxOut</a> &#8759; TxOut StandardShelley &#8594; <a href=\"Cardano-Api-TxBody.html#t:TxOut\" title=\"Cardano.Api.TxBody\">TxOut</a> <a href=\"Cardano-Api-Eras.html#t:ShelleyEra\" title=\"Cardano.Api.Eras\">ShelleyEra</a>",
+    "display_html": "<a href=\"#v:fromShelleyTxOut\">fromShelleyTxOut</a> &#8759; <a href=\"Cardano-Api-Eras.html#t:ShelleyLedgerEra\" title=\"Cardano.Api.Eras\">ShelleyLedgerEra</a> era ~ ledgerera &#8658; <a href=\"Cardano-Api-Eras.html#t:ShelleyBasedEra\" title=\"Cardano.Api.Eras\">ShelleyBasedEra</a> era &#8594; TxOut ledgerera &#8594; <a href=\"Cardano-Api-TxBody.html#t:TxOut\" title=\"Cardano.Api.TxBody\">TxOut</a> era",
     "name": "fromShelleyTxOut",
     "module": "Cardano.Api.TxBody",
     "link": "cardano-api/Cardano-Api-TxBody.html#v:fromShelleyTxOut"
   },
   {
-    "display_html": "<a href=\"#v:fromTxOut\">fromTxOut</a> &#8759; <a href=\"Cardano-Api-Eras.html#t:ShelleyLedgerEra\" title=\"Cardano.Api.Eras\">ShelleyLedgerEra</a> era ~ ledgerera &#8658; <a href=\"Cardano-Api-Eras.html#t:ShelleyBasedEra\" title=\"Cardano.Api.Eras\">ShelleyBasedEra</a> era &#8594; TxOut ledgerera &#8594; <a href=\"Cardano-Api-TxBody.html#t:TxOut\" title=\"Cardano.Api.TxBody\">TxOut</a> era",
-    "name": "fromTxOut",
+    "display_html": "<a href=\"#v:toAlonzoRdmrPtr\">toAlonzoRdmrPtr</a> &#8759; <a href=\"Cardano-Api-TxBody.html#t:ScriptWitnessIndex\" title=\"Cardano.Api.TxBody\">ScriptWitnessIndex</a> &#8594; RdmrPtr",
+    "name": "toAlonzoRdmrPtr",
     "module": "Cardano.Api.TxBody",
-    "link": "cardano-api/Cardano-Api-TxBody.html#v:fromTxOut"
+    "link": "cardano-api/Cardano-Api-TxBody.html#v:toAlonzoRdmrPtr"
   },
   {
-    "display_html": "<span class=\"keyword\">data family</span> <a href=\"#t:AsType\">AsType</a> t",
-    "name": "AsType AsTxId AsTxBody AsByronTxBody AsShelleyTxBody AsMaryTxBody",
+    "display_html": "<a href=\"#v:fromAlonzoRdmrPtr\">fromAlonzoRdmrPtr</a> &#8759; RdmrPtr &#8594; <a href=\"Cardano-Api-TxBody.html#t:ScriptWitnessIndex\" title=\"Cardano.Api.TxBody\">ScriptWitnessIndex</a>",
+    "name": "fromAlonzoRdmrPtr",
     "module": "Cardano.Api.TxBody",
-    "link": "cardano-api/Cardano-Api-TxBody.html#t:AsType"
+    "link": "cardano-api/Cardano-Api-TxBody.html#v:fromAlonzoRdmrPtr"
   },
   {
     "display_html": "<a href=\"#v:fromByronTxIn\">fromByronTxIn</a> &#8759; TxIn &#8594; <a href=\"Cardano-Api-TxBody.html#t:TxIn\" title=\"Cardano.Api.TxBody\">TxIn</a>",
     "name": "fromByronTxIn",
     "module": "Cardano.Api.TxBody",
     "link": "cardano-api/Cardano-Api-TxBody.html#v:fromByronTxIn"
+  },
+  {
+    "display_html": "<a href=\"#v:renderTxIn\">renderTxIn</a> &#8759; <a href=\"Cardano-Api-TxBody.html#t:TxIn\" title=\"Cardano.Api.TxBody\">TxIn</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/text-1.2.4.1/Data-Text.html#t:Text\" title=\"Data.Text\">Text</a>",
+    "name": "renderTxIn",
+    "module": "Cardano.Api.TxBody",
+    "link": "cardano-api/Cardano-Api-TxBody.html#v:renderTxIn"
+  },
+  {
+    "display_html": "<a href=\"#v:renderScriptWitnessIndex\">renderScriptWitnessIndex</a> &#8759; <a href=\"Cardano-Api-TxBody.html#t:ScriptWitnessIndex\" title=\"Cardano.Api.TxBody\">ScriptWitnessIndex</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:String\" title=\"Distribution.Compat.Prelude.Internal\">String</a>",
+    "name": "renderScriptWitnessIndex",
+    "module": "Cardano.Api.TxBody",
+    "link": "cardano-api/Cardano-Api-TxBody.html#v:renderScriptWitnessIndex"
+  },
+  {
+    "display_html": "<span class=\"keyword\">data family</span> <a href=\"#t:AsType\">AsType</a> t",
+    "name": "AsType AsTxId AsTxBody AsByronTxBody AsShelleyTxBody AsMaryTxBody",
+    "module": "Cardano.Api.TxBody",
+    "link": "cardano-api/Cardano-Api-TxBody.html#t:AsType"
   },
   {
     "display_html": "<span class=\"keyword\">data</span> <a href=\"#t:Tx\">Tx</a> era <span class=\"keyword\">where</span><ul class=\"subs\"><li><a href=\"#v:ByronTx\">ByronTx</a> &#8759; ATxAux <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/bytestring-0.10.12.0/Data-ByteString.html#t:ByteString\" title=\"Data.ByteString\">ByteString</a> &#8594; <a href=\"Cardano-Api-Tx.html#t:Tx\" title=\"Cardano.Api.Tx\">Tx</a> <a href=\"Cardano-Api-Eras.html#t:ByronEra\" title=\"Cardano.Api.Eras\">ByronEra</a></li><li><a href=\"#v:ShelleyTx\">ShelleyTx</a> &#8759; <a href=\"Cardano-Api-Eras.html#t:ShelleyBasedEra\" title=\"Cardano.Api.Eras\">ShelleyBasedEra</a> era &#8594; Tx (<a href=\"Cardano-Api-Eras.html#t:ShelleyLedgerEra\" title=\"Cardano.Api.Eras\">ShelleyLedgerEra</a> era) &#8594; <a href=\"Cardano-Api-Tx.html#t:Tx\" title=\"Cardano.Api.Tx\">Tx</a> era</li><li><span class=\"keyword\">pattern</span> <a href=\"#v:Tx\">Tx</a> &#8759; Era era &#8658; <a href=\"Cardano-Api-TxBody.html#t:TxBody\" title=\"Cardano.Api.TxBody\">TxBody</a> era &#8594; [<a href=\"Cardano-Api-Tx.html#t:KeyWitness\" title=\"Cardano.Api.Tx\">KeyWitness</a> era] &#8594; <a href=\"Cardano-Api-Tx.html#t:Tx\" title=\"Cardano.Api.Tx\">Tx</a> era</li></ul>",
@@ -2926,18 +2998,6 @@
     "name": "fromConsensusApplyTxErr",
     "module": "Cardano.Api.TxInMode",
     "link": "cardano-api/Cardano-Api-TxInMode.html#v:fromConsensusApplyTxErr"
-  },
-  {
-    "display_html": "<a href=\"#v:transactionFee\">transactionFee</a> &#8759; &#8704; era. <a href=\"Cardano-Api-Eras.html#t:IsShelleyBasedEra\" title=\"Cardano.Api.Eras\">IsShelleyBasedEra</a> era &#8658; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/GHC-Natural.html#t:Natural\" title=\"GHC.Natural\">Natural</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/GHC-Natural.html#t:Natural\" title=\"GHC.Natural\">Natural</a> &#8594; <a href=\"Cardano-Api-Tx.html#t:Tx\" title=\"Cardano.Api.Tx\">Tx</a> era &#8594; <a href=\"Cardano-Api-Value.html#t:Lovelace\" title=\"Cardano.Api.Value\">Lovelace</a>",
-    "name": "transactionFee",
-    "module": "Cardano.Api.Fees",
-    "link": "cardano-api/Cardano-Api-Fees.html#v:transactionFee"
-  },
-  {
-    "display_html": "<a href=\"#v:estimateTransactionFee\">estimateTransactionFee</a> &#8759; &#8704; era. <a href=\"Cardano-Api-Eras.html#t:IsShelleyBasedEra\" title=\"Cardano.Api.Eras\">IsShelleyBasedEra</a> era &#8658; <a href=\"Cardano-Api-NetworkId.html#t:NetworkId\" title=\"Cardano.Api.NetworkId\">NetworkId</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/GHC-Natural.html#t:Natural\" title=\"GHC.Natural\">Natural</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/GHC-Natural.html#t:Natural\" title=\"GHC.Natural\">Natural</a> &#8594; <a href=\"Cardano-Api-Tx.html#t:Tx\" title=\"Cardano.Api.Tx\">Tx</a> era &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Int\" title=\"Distribution.Compat.Prelude.Internal\">Int</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Int\" title=\"Distribution.Compat.Prelude.Internal\">Int</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Int\" title=\"Distribution.Compat.Prelude.Internal\">Int</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Int\" title=\"Distribution.Compat.Prelude.Internal\">Int</a> &#8594; <a href=\"Cardano-Api-Value.html#t:Lovelace\" title=\"Cardano.Api.Value\">Lovelace</a>",
-    "name": "estimateTransactionFee",
-    "module": "Cardano.Api.Fees",
-    "link": "cardano-api/Cardano-Api-Fees.html#v:estimateTransactionFee"
   },
   {
     "display_html": "<span class=\"keyword\">data</span> <a href=\"#t:Block\">Block</a> era <span class=\"keyword\">where</span><ul class=\"subs\"><li><a href=\"#v:ByronBlock\">ByronBlock</a> &#8759; ByronBlock &#8594; <a href=\"Cardano-Api-Block.html#t:Block\" title=\"Cardano.Api.Block\">Block</a> <a href=\"Cardano-Api-Eras.html#t:ByronEra\" title=\"Cardano.Api.Eras\">ByronEra</a></li><li><a href=\"#v:ShelleyBlock\">ShelleyBlock</a> &#8759; <a href=\"Cardano-Api-Eras.html#t:ShelleyBasedEra\" title=\"Cardano.Api.Eras\">ShelleyBasedEra</a> era &#8594; ShelleyBlock (<a href=\"Cardano-Api-Eras.html#t:ShelleyLedgerEra\" title=\"Cardano.Api.Eras\">ShelleyLedgerEra</a> era) &#8594; <a href=\"Cardano-Api-Block.html#t:Block\" title=\"Cardano.Api.Block\">Block</a> era</li><li><span class=\"keyword\">pattern</span> <a href=\"#v:Block\">Block</a> &#8759; <a href=\"Cardano-Api-Block.html#t:BlockHeader\" title=\"Cardano.Api.Block\">BlockHeader</a> &#8594; [<a href=\"Cardano-Api-Tx.html#t:Tx\" title=\"Cardano.Api.Tx\">Tx</a> era] &#8594; <a href=\"Cardano-Api-Block.html#t:Block\" title=\"Cardano.Api.Block\">Block</a> era</li></ul>",
@@ -3136,6 +3196,18 @@
     "name": "getProgress",
     "module": "Cardano.Api.Query",
     "link": "cardano-api/Cardano-Api-Query.html#v:getProgress"
+  },
+  {
+    "display_html": "<a href=\"#v:toLedgerUTxO\">toLedgerUTxO</a> &#8759; <a href=\"Cardano-Api-Eras.html#t:ShelleyLedgerEra\" title=\"Cardano.Api.Eras\">ShelleyLedgerEra</a> era ~ ledgerera &#8658; Crypto ledgerera ~ StandardCrypto &#8658; <a href=\"Cardano-Api-Eras.html#t:ShelleyBasedEra\" title=\"Cardano.Api.Eras\">ShelleyBasedEra</a> era &#8594; <a href=\"Cardano-Api-Query.html#t:UTxO\" title=\"Cardano.Api.Query\">UTxO</a> era &#8594; UTxO ledgerera",
+    "name": "toLedgerUTxO",
+    "module": "Cardano.Api.Query",
+    "link": "cardano-api/Cardano-Api-Query.html#v:toLedgerUTxO"
+  },
+  {
+    "display_html": "<a href=\"#v:fromLedgerUTxO\">fromLedgerUTxO</a> &#8759; <a href=\"Cardano-Api-Eras.html#t:ShelleyLedgerEra\" title=\"Cardano.Api.Eras\">ShelleyLedgerEra</a> era ~ ledgerera &#8658; Crypto ledgerera ~ StandardCrypto &#8658; <a href=\"Cardano-Api-Eras.html#t:ShelleyBasedEra\" title=\"Cardano.Api.Eras\">ShelleyBasedEra</a> era &#8594; UTxO ledgerera &#8594; <a href=\"Cardano-Api-Query.html#t:UTxO\" title=\"Cardano.Api.Query\">UTxO</a> era",
+    "name": "fromLedgerUTxO",
+    "module": "Cardano.Api.Query",
+    "link": "cardano-api/Cardano-Api-Query.html#v:fromLedgerUTxO"
   },
   {
     "display_html": "<a href=\"#v:connectToLocalNode\">connectToLocalNode</a> &#8759; <a href=\"Cardano-Api-IPC.html#t:LocalNodeConnectInfo\" title=\"Cardano.Api.IPC\">LocalNodeConnectInfo</a> mode &#8594; <a href=\"Cardano-Api-IPC.html#t:LocalNodeClientProtocolsInMode\" title=\"Cardano.Api.IPC\">LocalNodeClientProtocolsInMode</a> mode &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/System-IO.html#t:IO\" title=\"System.IO\">IO</a> ()",
@@ -3442,6 +3514,66 @@
     "name": "AsType AsByronAddr AsShelleyAddr AsByronAddress AsShelleyAddress AsAddress AsAddressAny AsAddressInEra AsStakeAddress AsByronEra AsShelleyEra AsAllegraEra AsMaryEra AsAlonzoEra AsByron AsShelley AsAllegra AsMary AsHash AsVerificationKey AsSigningKey AsTx AsByronTx AsShelleyTx AsKeyWitness AsByronWitness AsShelleyWitness AsTextEnvelope AsTxMetadata AsPaymentKey AsPaymentExtendedKey AsStakeKey AsStakeExtendedKey AsGenesisKey AsGenesisExtendedKey AsGenesisDelegateKey AsGenesisDelegateExtendedKey AsGenesisUTxOKey AsStakePoolKey AsScriptData AsSimpleScriptV1 AsSimpleScriptV2 AsPlutusScriptV1 AsScript AsScriptInAnyLang AsScriptInEra AsScriptHash AsSimpleScript AsPlutusScript AsByronKey AsByronKeyLegacy AsKesKey AsVrfKey AsStakePoolMetadata AsPolicyId AsAssetName AsPraosNonce AsUpdateProposal AsCertificate AsOperationalCertificate AsOperationalCertificateIssueCounter",
     "module": "Cardano.Api.OperationalCertificate",
     "link": "cardano-api/Cardano-Api-OperationalCertificate.html#t:AsType"
+  },
+  {
+    "display_html": "<a href=\"#v:transactionFee\">transactionFee</a> &#8759; &#8704; era. <a href=\"Cardano-Api-Eras.html#t:IsShelleyBasedEra\" title=\"Cardano.Api.Eras\">IsShelleyBasedEra</a> era &#8658; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/GHC-Natural.html#t:Natural\" title=\"GHC.Natural\">Natural</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/GHC-Natural.html#t:Natural\" title=\"GHC.Natural\">Natural</a> &#8594; <a href=\"Cardano-Api-Tx.html#t:Tx\" title=\"Cardano.Api.Tx\">Tx</a> era &#8594; <a href=\"Cardano-Api-Value.html#t:Lovelace\" title=\"Cardano.Api.Value\">Lovelace</a>",
+    "name": "transactionFee",
+    "module": "Cardano.Api.Fees",
+    "link": "cardano-api/Cardano-Api-Fees.html#v:transactionFee"
+  },
+  {
+    "display_html": "<a href=\"#v:estimateTransactionFee\">estimateTransactionFee</a> &#8759; &#8704; era. <a href=\"Cardano-Api-Eras.html#t:IsShelleyBasedEra\" title=\"Cardano.Api.Eras\">IsShelleyBasedEra</a> era &#8658; <a href=\"Cardano-Api-NetworkId.html#t:NetworkId\" title=\"Cardano.Api.NetworkId\">NetworkId</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/GHC-Natural.html#t:Natural\" title=\"GHC.Natural\">Natural</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/GHC-Natural.html#t:Natural\" title=\"GHC.Natural\">Natural</a> &#8594; <a href=\"Cardano-Api-Tx.html#t:Tx\" title=\"Cardano.Api.Tx\">Tx</a> era &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Int\" title=\"Distribution.Compat.Prelude.Internal\">Int</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Int\" title=\"Distribution.Compat.Prelude.Internal\">Int</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Int\" title=\"Distribution.Compat.Prelude.Internal\">Int</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Int\" title=\"Distribution.Compat.Prelude.Internal\">Int</a> &#8594; <a href=\"Cardano-Api-Value.html#t:Lovelace\" title=\"Cardano.Api.Value\">Lovelace</a>",
+    "name": "estimateTransactionFee",
+    "module": "Cardano.Api.Fees",
+    "link": "cardano-api/Cardano-Api-Fees.html#v:estimateTransactionFee"
+  },
+  {
+    "display_html": "<a href=\"#v:evaluateTransactionFee\">evaluateTransactionFee</a> &#8759; &#8704; era. <a href=\"Cardano-Api-Eras.html#t:IsShelleyBasedEra\" title=\"Cardano.Api.Eras\">IsShelleyBasedEra</a> era &#8658; <a href=\"Cardano-Api-ProtocolParameters.html#t:ProtocolParameters\" title=\"Cardano.Api.ProtocolParameters\">ProtocolParameters</a> &#8594; <a href=\"Cardano-Api-TxBody.html#t:TxBody\" title=\"Cardano.Api.TxBody\">TxBody</a> era &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Word\" title=\"Distribution.Compat.Prelude.Internal\">Word</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Word\" title=\"Distribution.Compat.Prelude.Internal\">Word</a> &#8594; <a href=\"Cardano-Api-Value.html#t:Lovelace\" title=\"Cardano.Api.Value\">Lovelace</a>",
+    "name": "evaluateTransactionFee",
+    "module": "Cardano.Api.Fees",
+    "link": "cardano-api/Cardano-Api-Fees.html#v:evaluateTransactionFee"
+  },
+  {
+    "display_html": "<a href=\"#v:estimateTransactionKeyWitnessCount\">estimateTransactionKeyWitnessCount</a> &#8759; <a href=\"Cardano-Api-TxBody.html#t:TxBodyContent\" title=\"Cardano.Api.TxBody\">TxBodyContent</a> <a href=\"Cardano-Api-TxBody.html#t:BuildTx\" title=\"Cardano.Api.TxBody\">BuildTx</a> era &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Word\" title=\"Distribution.Compat.Prelude.Internal\">Word</a>",
+    "name": "estimateTransactionKeyWitnessCount",
+    "module": "Cardano.Api.Fees",
+    "link": "cardano-api/Cardano-Api-Fees.html#v:estimateTransactionKeyWitnessCount"
+  },
+  {
+    "display_html": "<a href=\"#v:evaluateTransactionExecutionUnits\">evaluateTransactionExecutionUnits</a> &#8759; &#8704; era mode. <a href=\"Cardano-Api-Modes.html#t:EraInMode\" title=\"Cardano.Api.Modes\">EraInMode</a> era mode &#8594; <a href=\"Cardano-Api-Query.html#t:SystemStart\" title=\"Cardano.Api.Query\">SystemStart</a> &#8594; <a href=\"Cardano-Api-Query.html#t:EraHistory\" title=\"Cardano.Api.Query\">EraHistory</a> mode &#8594; <a href=\"Cardano-Api-ProtocolParameters.html#t:ProtocolParameters\" title=\"Cardano.Api.ProtocolParameters\">ProtocolParameters</a> &#8594; <a href=\"Cardano-Api-Query.html#t:UTxO\" title=\"Cardano.Api.Query\">UTxO</a> era &#8594; <a href=\"Cardano-Api-TxBody.html#t:TxBody\" title=\"Cardano.Api.TxBody\">TxBody</a> era &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Either\" title=\"Distribution.Compat.Prelude.Internal\">Either</a> <a href=\"Cardano-Api-Fees.html#t:TransactionValidityIntervalError\" title=\"Cardano.Api.Fees\">TransactionValidityIntervalError</a> (<a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Map\" title=\"Distribution.Compat.Prelude.Internal\">Map</a> <a href=\"Cardano-Api-TxBody.html#t:ScriptWitnessIndex\" title=\"Cardano.Api.TxBody\">ScriptWitnessIndex</a> (<a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Either\" title=\"Distribution.Compat.Prelude.Internal\">Either</a> <a href=\"Cardano-Api-Fees.html#t:ScriptExecutionError\" title=\"Cardano.Api.Fees\">ScriptExecutionError</a> <a href=\"Cardano-Api-Script.html#t:ExecutionUnits\" title=\"Cardano.Api.Script\">ExecutionUnits</a>))",
+    "name": "evaluateTransactionExecutionUnits",
+    "module": "Cardano.Api.Fees",
+    "link": "cardano-api/Cardano-Api-Fees.html#v:evaluateTransactionExecutionUnits"
+  },
+  {
+    "display_html": "<span class=\"keyword\">data</span> <a href=\"#t:ScriptExecutionError\">ScriptExecutionError</a><ul class=\"subs\"><li>= <a href=\"#v:ScriptErrorMissingTxIn\">ScriptErrorMissingTxIn</a> <a href=\"Cardano-Api-TxBody.html#t:TxIn\" title=\"Cardano.Api.TxBody\">TxIn</a></li><li>| <a href=\"#v:ScriptErrorTxInWithoutDatum\">ScriptErrorTxInWithoutDatum</a> <a href=\"Cardano-Api-TxBody.html#t:TxIn\" title=\"Cardano.Api.TxBody\">TxIn</a></li><li>| <a href=\"#v:ScriptErrorWrongDatum\">ScriptErrorWrongDatum</a> (<a href=\"Cardano-Api-Hash.html#t:Hash\" title=\"Cardano.Api.Hash\">Hash</a> <a href=\"Cardano-Api-ScriptData.html#t:ScriptData\" title=\"Cardano.Api.ScriptData\">ScriptData</a>)</li><li>| <a href=\"#v:ScriptErrorEvaluationFailed\">ScriptErrorEvaluationFailed</a> EvaluationError</li><li>| <a href=\"#v:ScriptErrorExecutionUnitsOverflow\">ScriptErrorExecutionUnitsOverflow</a></li></ul>",
+    "name": "ScriptExecutionError ScriptErrorMissingTxIn ScriptErrorTxInWithoutDatum ScriptErrorWrongDatum ScriptErrorEvaluationFailed ScriptErrorExecutionUnitsOverflow",
+    "module": "Cardano.Api.Fees",
+    "link": "cardano-api/Cardano-Api-Fees.html#t:ScriptExecutionError"
+  },
+  {
+    "display_html": "<span class=\"keyword\">newtype</span> <a href=\"#t:TransactionValidityIntervalError\">TransactionValidityIntervalError</a> = <a href=\"#v:TransactionValidityIntervalError\">TransactionValidityIntervalError</a> PastHorizonException",
+    "name": "TransactionValidityIntervalError TransactionValidityIntervalError",
+    "module": "Cardano.Api.Fees",
+    "link": "cardano-api/Cardano-Api-Fees.html#t:TransactionValidityIntervalError"
+  },
+  {
+    "display_html": "<a href=\"#v:evaluateTransactionBalance\">evaluateTransactionBalance</a> &#8759; &#8704; era. <a href=\"Cardano-Api-Eras.html#t:IsShelleyBasedEra\" title=\"Cardano.Api.Eras\">IsShelleyBasedEra</a> era &#8658; <a href=\"Cardano-Api-ProtocolParameters.html#t:ProtocolParameters\" title=\"Cardano.Api.ProtocolParameters\">ProtocolParameters</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Set\" title=\"Distribution.Compat.Prelude.Internal\">Set</a> <a href=\"Cardano-Api-Certificate.html#t:PoolId\" title=\"Cardano.Api.Certificate\">PoolId</a> &#8594; <a href=\"Cardano-Api-Query.html#t:UTxO\" title=\"Cardano.Api.Query\">UTxO</a> era &#8594; <a href=\"Cardano-Api-TxBody.html#t:TxBody\" title=\"Cardano.Api.TxBody\">TxBody</a> era &#8594; <a href=\"Cardano-Api-TxBody.html#t:TxOutValue\" title=\"Cardano.Api.TxBody\">TxOutValue</a> era",
+    "name": "evaluateTransactionBalance",
+    "module": "Cardano.Api.Fees",
+    "link": "cardano-api/Cardano-Api-Fees.html#v:evaluateTransactionBalance"
+  },
+  {
+    "display_html": "<a href=\"#v:makeTransactionBodyAutoBalance\">makeTransactionBodyAutoBalance</a> &#8759; &#8704; era mode. <a href=\"Cardano-Api-Eras.html#t:IsShelleyBasedEra\" title=\"Cardano.Api.Eras\">IsShelleyBasedEra</a> era &#8658; <a href=\"Cardano-Api-Modes.html#t:EraInMode\" title=\"Cardano.Api.Modes\">EraInMode</a> era mode &#8594; <a href=\"Cardano-Api-Query.html#t:SystemStart\" title=\"Cardano.Api.Query\">SystemStart</a> &#8594; <a href=\"Cardano-Api-Query.html#t:EraHistory\" title=\"Cardano.Api.Query\">EraHistory</a> mode &#8594; <a href=\"Cardano-Api-ProtocolParameters.html#t:ProtocolParameters\" title=\"Cardano.Api.ProtocolParameters\">ProtocolParameters</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Set\" title=\"Distribution.Compat.Prelude.Internal\">Set</a> <a href=\"Cardano-Api-Certificate.html#t:PoolId\" title=\"Cardano.Api.Certificate\">PoolId</a> &#8594; <a href=\"Cardano-Api-Query.html#t:UTxO\" title=\"Cardano.Api.Query\">UTxO</a> era &#8594; <a href=\"Cardano-Api-TxBody.html#t:TxBodyContent\" title=\"Cardano.Api.TxBody\">TxBodyContent</a> <a href=\"Cardano-Api-TxBody.html#t:BuildTx\" title=\"Cardano.Api.TxBody\">BuildTx</a> era &#8594; <a href=\"Cardano-Api-Address.html#t:AddressInEra\" title=\"Cardano.Api.Address\">AddressInEra</a> era &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Maybe\" title=\"Distribution.Compat.Prelude.Internal\">Maybe</a> <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Word\" title=\"Distribution.Compat.Prelude.Internal\">Word</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Either\" title=\"Distribution.Compat.Prelude.Internal\">Either</a> (<a href=\"Cardano-Api-Fees.html#t:TxBodyErrorAutoBalance\" title=\"Cardano.Api.Fees\">TxBodyErrorAutoBalance</a> era) (<a href=\"Cardano-Api-TxBody.html#t:TxBody\" title=\"Cardano.Api.TxBody\">TxBody</a> era)",
+    "name": "makeTransactionBodyAutoBalance",
+    "module": "Cardano.Api.Fees",
+    "link": "cardano-api/Cardano-Api-Fees.html#v:makeTransactionBodyAutoBalance"
+  },
+  {
+    "display_html": "<span class=\"keyword\">data</span> <a href=\"#t:TxBodyErrorAutoBalance\">TxBodyErrorAutoBalance</a> era<ul class=\"subs\"><li>= <a href=\"#v:TxBodyError\">TxBodyError</a> (<a href=\"Cardano-Api-TxBody.html#t:TxBodyError\" title=\"Cardano.Api.TxBody\">TxBodyError</a> era)</li><li>| <a href=\"#v:TxBodyScriptExecutionError\">TxBodyScriptExecutionError</a> [(<a href=\"Cardano-Api-TxBody.html#t:ScriptWitnessIndex\" title=\"Cardano.Api.TxBody\">ScriptWitnessIndex</a>, <a href=\"Cardano-Api-Fees.html#t:ScriptExecutionError\" title=\"Cardano.Api.Fees\">ScriptExecutionError</a>)]</li><li>| <a href=\"#v:TxBodyErrorAssetBalanceWrong\">TxBodyErrorAssetBalanceWrong</a> <a href=\"Cardano-Api-Value.html#t:Value\" title=\"Cardano.Api.Value\">Value</a></li><li>| <a href=\"#v:TxBodyErrorAdaBalanceNegative\">TxBodyErrorAdaBalanceNegative</a> <a href=\"Cardano-Api-Value.html#t:Lovelace\" title=\"Cardano.Api.Value\">Lovelace</a></li><li>| <a href=\"#v:TxBodyErrorAdaBalanceTooSmall\">TxBodyErrorAdaBalanceTooSmall</a> <a href=\"Cardano-Api-Value.html#t:Lovelace\" title=\"Cardano.Api.Value\">Lovelace</a></li><li>| <a href=\"#v:TxBodyErrorByronEraNotSupported\">TxBodyErrorByronEraNotSupported</a></li><li>| <a href=\"#v:TxBodyErrorMissingParamMinUTxO\">TxBodyErrorMissingParamMinUTxO</a></li><li>| <a href=\"#v:TxBodyErrorMissingParamCostPerWord\">TxBodyErrorMissingParamCostPerWord</a></li><li>| <a href=\"#v:TxBodyErrorValidityInterval\">TxBodyErrorValidityInterval</a> <a href=\"Cardano-Api-Fees.html#t:TransactionValidityIntervalError\" title=\"Cardano.Api.Fees\">TransactionValidityIntervalError</a></li></ul>",
+    "name": "TxBodyErrorAutoBalance TxBodyError TxBodyScriptExecutionError TxBodyErrorAssetBalanceWrong TxBodyErrorAdaBalanceNegative TxBodyErrorAdaBalanceTooSmall TxBodyErrorByronEraNotSupported TxBodyErrorMissingParamMinUTxO TxBodyErrorMissingParamCostPerWord TxBodyErrorValidityInterval",
+    "module": "Cardano.Api.Fees",
+    "link": "cardano-api/Cardano-Api-Fees.html#t:TxBodyErrorAutoBalance"
   },
   {
     "display_html": "<span class=\"keyword\">data</span> <a href=\"#t:ByronEra\">ByronEra</a>",
@@ -4308,6 +4440,66 @@
     "link": "cardano-api/Cardano-Api.html#v:scriptDataSupportedInEra"
   },
   {
+    "display_html": "<a href=\"#v:transactionFee\">transactionFee</a> &#8759; &#8704; era. <a href=\"Cardano-Api.html#t:IsShelleyBasedEra\" title=\"Cardano.Api\">IsShelleyBasedEra</a> era &#8658; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/GHC-Natural.html#t:Natural\" title=\"GHC.Natural\">Natural</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/GHC-Natural.html#t:Natural\" title=\"GHC.Natural\">Natural</a> &#8594; <a href=\"Cardano-Api.html#t:Tx\" title=\"Cardano.Api\">Tx</a> era &#8594; <a href=\"Cardano-Api.html#t:Lovelace\" title=\"Cardano.Api\">Lovelace</a>",
+    "name": "transactionFee",
+    "module": "Cardano.Api",
+    "link": "cardano-api/Cardano-Api.html#v:transactionFee"
+  },
+  {
+    "display_html": "<a href=\"#v:estimateTransactionFee\">estimateTransactionFee</a> &#8759; &#8704; era. <a href=\"Cardano-Api.html#t:IsShelleyBasedEra\" title=\"Cardano.Api\">IsShelleyBasedEra</a> era &#8658; <a href=\"Cardano-Api.html#t:NetworkId\" title=\"Cardano.Api\">NetworkId</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/GHC-Natural.html#t:Natural\" title=\"GHC.Natural\">Natural</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/GHC-Natural.html#t:Natural\" title=\"GHC.Natural\">Natural</a> &#8594; <a href=\"Cardano-Api.html#t:Tx\" title=\"Cardano.Api\">Tx</a> era &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Int\" title=\"Distribution.Compat.Prelude.Internal\">Int</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Int\" title=\"Distribution.Compat.Prelude.Internal\">Int</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Int\" title=\"Distribution.Compat.Prelude.Internal\">Int</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Int\" title=\"Distribution.Compat.Prelude.Internal\">Int</a> &#8594; <a href=\"Cardano-Api.html#t:Lovelace\" title=\"Cardano.Api\">Lovelace</a>",
+    "name": "estimateTransactionFee",
+    "module": "Cardano.Api",
+    "link": "cardano-api/Cardano-Api.html#v:estimateTransactionFee"
+  },
+  {
+    "display_html": "<a href=\"#v:evaluateTransactionFee\">evaluateTransactionFee</a> &#8759; &#8704; era. <a href=\"Cardano-Api.html#t:IsShelleyBasedEra\" title=\"Cardano.Api\">IsShelleyBasedEra</a> era &#8658; <a href=\"Cardano-Api-ProtocolParameters.html#t:ProtocolParameters\" title=\"Cardano.Api.ProtocolParameters\">ProtocolParameters</a> &#8594; <a href=\"Cardano-Api.html#t:TxBody\" title=\"Cardano.Api\">TxBody</a> era &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Word\" title=\"Distribution.Compat.Prelude.Internal\">Word</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Word\" title=\"Distribution.Compat.Prelude.Internal\">Word</a> &#8594; <a href=\"Cardano-Api.html#t:Lovelace\" title=\"Cardano.Api\">Lovelace</a>",
+    "name": "evaluateTransactionFee",
+    "module": "Cardano.Api",
+    "link": "cardano-api/Cardano-Api.html#v:evaluateTransactionFee"
+  },
+  {
+    "display_html": "<a href=\"#v:estimateTransactionKeyWitnessCount\">estimateTransactionKeyWitnessCount</a> &#8759; <a href=\"Cardano-Api.html#t:TxBodyContent\" title=\"Cardano.Api\">TxBodyContent</a> <a href=\"Cardano-Api.html#t:BuildTx\" title=\"Cardano.Api\">BuildTx</a> era &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Word\" title=\"Distribution.Compat.Prelude.Internal\">Word</a>",
+    "name": "estimateTransactionKeyWitnessCount",
+    "module": "Cardano.Api",
+    "link": "cardano-api/Cardano-Api.html#v:estimateTransactionKeyWitnessCount"
+  },
+  {
+    "display_html": "<a href=\"#v:evaluateTransactionExecutionUnits\">evaluateTransactionExecutionUnits</a> &#8759; &#8704; era mode. <a href=\"Cardano-Api.html#t:EraInMode\" title=\"Cardano.Api\">EraInMode</a> era mode &#8594; <a href=\"Cardano-Api-Query.html#t:SystemStart\" title=\"Cardano.Api.Query\">SystemStart</a> &#8594; <a href=\"Cardano-Api.html#t:EraHistory\" title=\"Cardano.Api\">EraHistory</a> mode &#8594; <a href=\"Cardano-Api-ProtocolParameters.html#t:ProtocolParameters\" title=\"Cardano.Api.ProtocolParameters\">ProtocolParameters</a> &#8594; <a href=\"Cardano-Api.html#t:UTxO\" title=\"Cardano.Api\">UTxO</a> era &#8594; <a href=\"Cardano-Api.html#t:TxBody\" title=\"Cardano.Api\">TxBody</a> era &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Either\" title=\"Distribution.Compat.Prelude.Internal\">Either</a> <a href=\"Cardano-Api.html#t:TransactionValidityIntervalError\" title=\"Cardano.Api\">TransactionValidityIntervalError</a> (<a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Map\" title=\"Distribution.Compat.Prelude.Internal\">Map</a> <a href=\"Cardano-Api-TxBody.html#t:ScriptWitnessIndex\" title=\"Cardano.Api.TxBody\">ScriptWitnessIndex</a> (<a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Either\" title=\"Distribution.Compat.Prelude.Internal\">Either</a> <a href=\"Cardano-Api.html#t:ScriptExecutionError\" title=\"Cardano.Api\">ScriptExecutionError</a> <a href=\"Cardano-Api.html#t:ExecutionUnits\" title=\"Cardano.Api\">ExecutionUnits</a>))",
+    "name": "evaluateTransactionExecutionUnits",
+    "module": "Cardano.Api",
+    "link": "cardano-api/Cardano-Api.html#v:evaluateTransactionExecutionUnits"
+  },
+  {
+    "display_html": "<span class=\"keyword\">data</span> <a href=\"#t:ScriptExecutionError\">ScriptExecutionError</a><ul class=\"subs\"><li>= <a href=\"#v:ScriptErrorMissingTxIn\">ScriptErrorMissingTxIn</a> <a href=\"Cardano-Api.html#t:TxIn\" title=\"Cardano.Api\">TxIn</a></li><li>| <a href=\"#v:ScriptErrorTxInWithoutDatum\">ScriptErrorTxInWithoutDatum</a> <a href=\"Cardano-Api.html#t:TxIn\" title=\"Cardano.Api\">TxIn</a></li><li>| <a href=\"#v:ScriptErrorWrongDatum\">ScriptErrorWrongDatum</a> (<a href=\"Cardano-Api.html#t:Hash\" title=\"Cardano.Api\">Hash</a> <a href=\"Cardano-Api.html#t:ScriptData\" title=\"Cardano.Api\">ScriptData</a>)</li><li>| <a href=\"#v:ScriptErrorEvaluationFailed\">ScriptErrorEvaluationFailed</a> EvaluationError</li><li>| <a href=\"#v:ScriptErrorExecutionUnitsOverflow\">ScriptErrorExecutionUnitsOverflow</a></li></ul>",
+    "name": "ScriptExecutionError ScriptErrorMissingTxIn ScriptErrorTxInWithoutDatum ScriptErrorWrongDatum ScriptErrorEvaluationFailed ScriptErrorExecutionUnitsOverflow",
+    "module": "Cardano.Api",
+    "link": "cardano-api/Cardano-Api.html#t:ScriptExecutionError"
+  },
+  {
+    "display_html": "<span class=\"keyword\">data</span> <a href=\"#t:TransactionValidityIntervalError\">TransactionValidityIntervalError</a>",
+    "name": "TransactionValidityIntervalError",
+    "module": "Cardano.Api",
+    "link": "cardano-api/Cardano-Api.html#t:TransactionValidityIntervalError"
+  },
+  {
+    "display_html": "<a href=\"#v:evaluateTransactionBalance\">evaluateTransactionBalance</a> &#8759; &#8704; era. <a href=\"Cardano-Api.html#t:IsShelleyBasedEra\" title=\"Cardano.Api\">IsShelleyBasedEra</a> era &#8658; <a href=\"Cardano-Api-ProtocolParameters.html#t:ProtocolParameters\" title=\"Cardano.Api.ProtocolParameters\">ProtocolParameters</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Set\" title=\"Distribution.Compat.Prelude.Internal\">Set</a> <a href=\"Cardano-Api-Certificate.html#t:PoolId\" title=\"Cardano.Api.Certificate\">PoolId</a> &#8594; <a href=\"Cardano-Api.html#t:UTxO\" title=\"Cardano.Api\">UTxO</a> era &#8594; <a href=\"Cardano-Api.html#t:TxBody\" title=\"Cardano.Api\">TxBody</a> era &#8594; <a href=\"Cardano-Api.html#t:TxOutValue\" title=\"Cardano.Api\">TxOutValue</a> era",
+    "name": "evaluateTransactionBalance",
+    "module": "Cardano.Api",
+    "link": "cardano-api/Cardano-Api.html#v:evaluateTransactionBalance"
+  },
+  {
+    "display_html": "<a href=\"#v:makeTransactionBodyAutoBalance\">makeTransactionBodyAutoBalance</a> &#8759; &#8704; era mode. <a href=\"Cardano-Api.html#t:IsShelleyBasedEra\" title=\"Cardano.Api\">IsShelleyBasedEra</a> era &#8658; <a href=\"Cardano-Api.html#t:EraInMode\" title=\"Cardano.Api\">EraInMode</a> era mode &#8594; <a href=\"Cardano-Api-Query.html#t:SystemStart\" title=\"Cardano.Api.Query\">SystemStart</a> &#8594; <a href=\"Cardano-Api.html#t:EraHistory\" title=\"Cardano.Api\">EraHistory</a> mode &#8594; <a href=\"Cardano-Api-ProtocolParameters.html#t:ProtocolParameters\" title=\"Cardano.Api.ProtocolParameters\">ProtocolParameters</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Set\" title=\"Distribution.Compat.Prelude.Internal\">Set</a> <a href=\"Cardano-Api-Certificate.html#t:PoolId\" title=\"Cardano.Api.Certificate\">PoolId</a> &#8594; <a href=\"Cardano-Api.html#t:UTxO\" title=\"Cardano.Api\">UTxO</a> era &#8594; <a href=\"Cardano-Api.html#t:TxBodyContent\" title=\"Cardano.Api\">TxBodyContent</a> <a href=\"Cardano-Api.html#t:BuildTx\" title=\"Cardano.Api\">BuildTx</a> era &#8594; <a href=\"Cardano-Api.html#t:AddressInEra\" title=\"Cardano.Api\">AddressInEra</a> era &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Maybe\" title=\"Distribution.Compat.Prelude.Internal\">Maybe</a> <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Word\" title=\"Distribution.Compat.Prelude.Internal\">Word</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Either\" title=\"Distribution.Compat.Prelude.Internal\">Either</a> (<a href=\"Cardano-Api.html#t:TxBodyErrorAutoBalance\" title=\"Cardano.Api\">TxBodyErrorAutoBalance</a> era) (<a href=\"Cardano-Api.html#t:TxBody\" title=\"Cardano.Api\">TxBody</a> era)",
+    "name": "makeTransactionBodyAutoBalance",
+    "module": "Cardano.Api",
+    "link": "cardano-api/Cardano-Api.html#v:makeTransactionBodyAutoBalance"
+  },
+  {
+    "display_html": "<span class=\"keyword\">data</span> <a href=\"#t:TxBodyErrorAutoBalance\">TxBodyErrorAutoBalance</a> era<ul class=\"subs\"><li>= <a href=\"#v:TxBodyError\">TxBodyError</a> (<a href=\"Cardano-Api.html#t:TxBodyError\" title=\"Cardano.Api\">TxBodyError</a> era)</li><li>| <a href=\"#v:TxBodyScriptExecutionError\">TxBodyScriptExecutionError</a> [(<a href=\"Cardano-Api-TxBody.html#t:ScriptWitnessIndex\" title=\"Cardano.Api.TxBody\">ScriptWitnessIndex</a>, <a href=\"Cardano-Api.html#t:ScriptExecutionError\" title=\"Cardano.Api\">ScriptExecutionError</a>)]</li><li>| <a href=\"#v:TxBodyErrorAssetBalanceWrong\">TxBodyErrorAssetBalanceWrong</a> <a href=\"Cardano-Api.html#t:Value\" title=\"Cardano.Api\">Value</a></li><li>| <a href=\"#v:TxBodyErrorAdaBalanceNegative\">TxBodyErrorAdaBalanceNegative</a> <a href=\"Cardano-Api.html#t:Lovelace\" title=\"Cardano.Api\">Lovelace</a></li><li>| <a href=\"#v:TxBodyErrorAdaBalanceTooSmall\">TxBodyErrorAdaBalanceTooSmall</a> <a href=\"Cardano-Api.html#t:Lovelace\" title=\"Cardano.Api\">Lovelace</a></li><li>| <a href=\"#v:TxBodyErrorByronEraNotSupported\">TxBodyErrorByronEraNotSupported</a></li><li>| <a href=\"#v:TxBodyErrorMissingParamMinUTxO\">TxBodyErrorMissingParamMinUTxO</a></li><li>| <a href=\"#v:TxBodyErrorMissingParamCostPerWord\">TxBodyErrorMissingParamCostPerWord</a></li><li>| <a href=\"#v:TxBodyErrorValidityInterval\">TxBodyErrorValidityInterval</a> <a href=\"Cardano-Api.html#t:TransactionValidityIntervalError\" title=\"Cardano.Api\">TransactionValidityIntervalError</a></li></ul>",
+    "name": "TxBodyErrorAutoBalance TxBodyError TxBodyScriptExecutionError TxBodyErrorAssetBalanceWrong TxBodyErrorAdaBalanceNegative TxBodyErrorAdaBalanceTooSmall TxBodyErrorByronEraNotSupported TxBodyErrorMissingParamMinUTxO TxBodyErrorMissingParamCostPerWord TxBodyErrorValidityInterval",
+    "module": "Cardano.Api",
+    "link": "cardano-api/Cardano-Api.html#t:TxBodyErrorAutoBalance"
+  },
+  {
     "display_html": "<span class=\"keyword\">data</span> <a href=\"#t:Tx\">Tx</a> era <span class=\"keyword\">where</span><ul class=\"subs\"><li><span class=\"keyword\">pattern</span> <a href=\"#v:Tx\">Tx</a> &#8759; Era era &#8658; <a href=\"Cardano-Api.html#t:TxBody\" title=\"Cardano.Api\">TxBody</a> era &#8594; [<a href=\"Cardano-Api.html#t:KeyWitness\" title=\"Cardano.Api\">KeyWitness</a> era] &#8594; <a href=\"Cardano-Api.html#t:Tx\" title=\"Cardano.Api\">Tx</a> era</li></ul>",
     "name": "Tx Tx",
     "module": "Cardano.Api",
@@ -4372,18 +4564,6 @@
     "name": "makeShelleyBootstrapWitness",
     "module": "Cardano.Api",
     "link": "cardano-api/Cardano-Api.html#v:makeShelleyBootstrapWitness"
-  },
-  {
-    "display_html": "<a href=\"#v:transactionFee\">transactionFee</a> &#8759; &#8704; era. <a href=\"Cardano-Api.html#t:IsShelleyBasedEra\" title=\"Cardano.Api\">IsShelleyBasedEra</a> era &#8658; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/GHC-Natural.html#t:Natural\" title=\"GHC.Natural\">Natural</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/GHC-Natural.html#t:Natural\" title=\"GHC.Natural\">Natural</a> &#8594; <a href=\"Cardano-Api.html#t:Tx\" title=\"Cardano.Api\">Tx</a> era &#8594; <a href=\"Cardano-Api.html#t:Lovelace\" title=\"Cardano.Api\">Lovelace</a>",
-    "name": "transactionFee",
-    "module": "Cardano.Api",
-    "link": "cardano-api/Cardano-Api.html#v:transactionFee"
-  },
-  {
-    "display_html": "<a href=\"#v:estimateTransactionFee\">estimateTransactionFee</a> &#8759; &#8704; era. <a href=\"Cardano-Api.html#t:IsShelleyBasedEra\" title=\"Cardano.Api\">IsShelleyBasedEra</a> era &#8658; <a href=\"Cardano-Api.html#t:NetworkId\" title=\"Cardano.Api\">NetworkId</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/GHC-Natural.html#t:Natural\" title=\"GHC.Natural\">Natural</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/GHC-Natural.html#t:Natural\" title=\"GHC.Natural\">Natural</a> &#8594; <a href=\"Cardano-Api.html#t:Tx\" title=\"Cardano.Api\">Tx</a> era &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Int\" title=\"Distribution.Compat.Prelude.Internal\">Int</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Int\" title=\"Distribution.Compat.Prelude.Internal\">Int</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Int\" title=\"Distribution.Compat.Prelude.Internal\">Int</a> &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Int\" title=\"Distribution.Compat.Prelude.Internal\">Int</a> &#8594; <a href=\"Cardano-Api.html#t:Lovelace\" title=\"Cardano.Api\">Lovelace</a>",
-    "name": "estimateTransactionFee",
-    "module": "Cardano.Api",
-    "link": "cardano-api/Cardano-Api.html#v:estimateTransactionFee"
   },
   {
     "display_html": "<span class=\"keyword\">newtype</span> <a href=\"#t:TxMetadata\">TxMetadata</a> = <a href=\"#v:TxMetadata\">TxMetadata</a> (<a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Map\" title=\"Distribution.Compat.Prelude.Internal\">Map</a> <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/Cabal-3.2.1.0/Distribution-Compat-Prelude-Internal.html#t:Word64\" title=\"Distribution.Compat.Prelude.Internal\">Word64</a> <a href=\"Cardano-Api.html#t:TxMetadataValue\" title=\"Cardano.Api\">TxMetadataValue</a>)",
@@ -5706,13 +5886,13 @@
     "link": "cardano-api/Cardano-Api-Shelley.html#t:TxOut"
   },
   {
-    "display_html": "<a href=\"#v:toShelleyTxOut\">toShelleyTxOut</a> &#8759; &#8704; era ledgerera. (<a href=\"Cardano-Api-Shelley.html#t:ShelleyLedgerEra\" title=\"Cardano.Api.Shelley\">ShelleyLedgerEra</a> era ~ ledgerera, <a href=\"Cardano-Api-Eras.html#t:IsShelleyBasedEra\" title=\"Cardano.Api.Eras\">IsShelleyBasedEra</a> era, ShelleyBased ledgerera) &#8658; <a href=\"Cardano-Api-Shelley.html#t:TxOut\" title=\"Cardano.Api.Shelley\">TxOut</a> era &#8594; TxOut ledgerera",
+    "display_html": "<a href=\"#v:toShelleyTxOut\">toShelleyTxOut</a> &#8759; &#8704; era ledgerera. <a href=\"Cardano-Api-Shelley.html#t:ShelleyLedgerEra\" title=\"Cardano.Api.Shelley\">ShelleyLedgerEra</a> era ~ ledgerera &#8658; <a href=\"Cardano-Api-Eras.html#t:ShelleyBasedEra\" title=\"Cardano.Api.Eras\">ShelleyBasedEra</a> era &#8594; <a href=\"Cardano-Api-Shelley.html#t:TxOut\" title=\"Cardano.Api.Shelley\">TxOut</a> era &#8594; TxOut ledgerera",
     "name": "toShelleyTxOut",
     "module": "Cardano.Api.Shelley",
     "link": "cardano-api/Cardano-Api-Shelley.html#v:toShelleyTxOut"
   },
   {
-    "display_html": "<a href=\"#v:fromShelleyTxOut\">fromShelleyTxOut</a> &#8759; TxOut StandardShelley &#8594; <a href=\"Cardano-Api-Shelley.html#t:TxOut\" title=\"Cardano.Api.Shelley\">TxOut</a> <a href=\"Cardano-Api-Eras.html#t:ShelleyEra\" title=\"Cardano.Api.Eras\">ShelleyEra</a>",
+    "display_html": "<a href=\"#v:fromShelleyTxOut\">fromShelleyTxOut</a> &#8759; <a href=\"Cardano-Api-Shelley.html#t:ShelleyLedgerEra\" title=\"Cardano.Api.Shelley\">ShelleyLedgerEra</a> era ~ ledgerera &#8658; <a href=\"Cardano-Api-Eras.html#t:ShelleyBasedEra\" title=\"Cardano.Api.Eras\">ShelleyBasedEra</a> era &#8594; TxOut ledgerera &#8594; <a href=\"Cardano-Api-Shelley.html#t:TxOut\" title=\"Cardano.Api.Shelley\">TxOut</a> era",
     "name": "fromShelleyTxOut",
     "module": "Cardano.Api.Shelley",
     "link": "cardano-api/Cardano-Api-Shelley.html#v:fromShelleyTxOut"
@@ -8130,7 +8310,7 @@
     "link": "cardano-testnet/Testnet-Commands-Version.html#v:runVersionOptions"
   },
   {
-    "display_html": "<a href=\"#v:runTestnet\">runTestnet</a> &#8759; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/Data-Maybe.html#t:Maybe\" title=\"Data.Maybe\">Maybe</a> <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/Data-Int.html#t:Int\" title=\"Data.Int\">Int</a> &#8594; (Conf &#8594; <a href=\"file:///home/runner/.cabal/store/ghc-8.10.4/hedgehog-extras-0.1.0.0-451e113f49244a5dad819b9de00f75185be2a622fa28ecd0aec0a128e0f0936b/share/doc/html/Hedgehog-Extras-Internal-Test-Integration.html#t:Integration\" title=\"Hedgehog.Extras.Internal.Test.Integration\">Integration</a> a) &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/System-IO.html#t:IO\" title=\"System.IO\">IO</a> ()",
+    "display_html": "<a href=\"#v:runTestnet\">runTestnet</a> &#8759; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/Data-Maybe.html#t:Maybe\" title=\"Data.Maybe\">Maybe</a> <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/Data-Int.html#t:Int\" title=\"Data.Int\">Int</a> &#8594; (Conf &#8594; <a href=\"file:///home/runner/.cabal/store/ghc-8.10.4/hedgehog-extras-0.1.0.0-52be123d6b6450409cd11734c09e2457d3299d468a816a9937704fe7d373c5f7/share/doc/html/Hedgehog-Extras-Internal-Test-Integration.html#t:Integration\" title=\"Hedgehog.Extras.Internal.Test.Integration\">Integration</a> a) &#8594; <a href=\"file:///opt/ghc/8.10.4/share/doc/ghc-8.10.4/html/libraries/base-4.14.1.0/System-IO.html#t:IO\" title=\"System.IO\">IO</a> ()",
     "name": "runTestnet",
     "module": "Testnet.Run",
     "link": "cardano-testnet/Testnet-Run.html#v:runTestnet"
