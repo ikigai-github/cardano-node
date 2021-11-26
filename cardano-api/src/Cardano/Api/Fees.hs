@@ -30,7 +30,12 @@ module Cardano.Api.Fees (
 
     -- * Automated transaction building
     makeTransactionBodyAutoBalance,
+    BalancedTxBody(..),
     TxBodyErrorAutoBalance(..),
+
+    -- * Minimum UTxO calculation
+    calculateMinimumUTxO,
+    MinimumUTxOError(..),
   ) where
 
 import           Prelude
@@ -49,8 +54,8 @@ import           GHC.Records (HasField (..))
 import           Numeric.Natural
 
 import           Control.Monad.Trans.Except
-import qualified Data.Text.Prettyprint.Doc as PP
-import qualified Data.Text.Prettyprint.Doc.Render.String as PP
+import qualified Prettyprinter as PP
+import qualified Prettyprinter.Render.String as PP
 
 import qualified Cardano.Binary as CBOR
 import           Cardano.Slotting.EpochInfo (EpochInfo, hoistEpochInfo)
@@ -63,11 +68,11 @@ import qualified Cardano.Ledger.Core as Ledger
 import qualified Cardano.Ledger.Crypto as Ledger
 import qualified Cardano.Ledger.Era as Ledger.Era (Crypto)
 import qualified Cardano.Ledger.Keys as Ledger
-import qualified Shelley.Spec.Ledger.API as Ledger (CLI, DCert, TxIn, Wdrl)
-import qualified Shelley.Spec.Ledger.API.Wallet as Ledger (evaluateTransactionBalance,
+import qualified Cardano.Ledger.Shelley.API as Ledger (CLI, DCert, TxIn, Wdrl)
+import qualified Cardano.Ledger.Shelley.API.Wallet as Ledger (evaluateTransactionBalance,
                    evaluateTransactionFee)
 
-import           Shelley.Spec.Ledger.PParams (PParams' (..))
+import           Cardano.Ledger.Shelley.PParams (PParams' (..))
 
 import qualified Cardano.Ledger.Mary.Value as Mary
 
@@ -355,6 +360,10 @@ data ScriptExecutionError =
        -- than the expected maximum of a few milliseconds.
        --
      | ScriptErrorExecutionUnitsOverflow
+
+       -- | An attempt was made to spend a key witnessed tx input
+       -- with a script witness.
+     | ScriptErrorNotPlutusWitnessedTxIn ScriptWitnessIndex
   deriving Show
 
 instance Error ScriptExecutionError where
@@ -384,6 +393,9 @@ instance Error ScriptExecutionError where
    ++ "impossible. So this probably indicates a chain configuration problem, "
    ++ "perhaps with the values in the cost model."
 
+  displayError (ScriptErrorNotPlutusWitnessedTxIn scriptWitness) =
+      renderScriptWitnessIndex scriptWitness <> " is not a Plutus script \
+      \witnessed tx input and cannot be spent using a Plutus script witness."
 
 -- | The transaction validity interval is too far into the future.
 --
@@ -515,11 +527,13 @@ evaluateTransactionExecutionUnits _eraInMode systemstart history pparams utxo tx
         Alonzo.ValidationFailed err -> ScriptErrorEvaluationFailed err
         Alonzo.IncompatibleBudget _ -> ScriptErrorExecutionUnitsOverflow
 
+        -- This is only possible for spending scripts and occurs when
+        -- we attempt to spend a key witnessed tx input with a Plutus
+        -- script witness.
+        Alonzo.RedeemerNotNeeded rdmrPtr ->
+          ScriptErrorNotPlutusWitnessedTxIn $ fromAlonzoRdmrPtr rdmrPtr
         -- Some of the errors are impossible by construction, given the way we
         -- build transactions in the API:
-        Alonzo.RedeemerNotNeeded rdmrPtr ->
-          impossible ("RedeemerNotNeeded " ++ show (fromAlonzoRdmrPtr rdmrPtr))
-
         Alonzo.MissingScript rdmrPtr ->
           impossible ("MissingScript " ++ show (fromAlonzoRdmrPtr rdmrPtr))
 
@@ -696,7 +710,7 @@ data TxBodyErrorAutoBalance =
          TxOutInAnyEra
          -- ^ Minimum UTxO
          Lovelace
-
+     | TxBodyErrorMinUTxOMissingPParams MinimumUTxOError
      | TxBodyErrorNonAdaAssetsUnbalanced Value
   deriving Show
 
@@ -707,7 +721,7 @@ instance Error TxBodyErrorAutoBalance where
   displayError (TxBodyScriptExecutionError failures) =
       "The following scripts have execution failures:\n"
    ++ unlines [ "the script for " ++ renderScriptWitnessIndex index
-                ++ " failed with " ++ displayError failure
+                ++ " failed with: " ++ "\n" ++ displayError failure
               | (index, failure) <- failures ]
 
   displayError TxBodyScriptBadScriptValidity =
@@ -753,6 +767,8 @@ instance Error TxBodyErrorAutoBalance where
   displayError (TxBodyErrorNonAdaAssetsUnbalanced val) =
       "Non-Ada assets are unbalanced: " <> Text.unpack (renderValue val)
 
+  displayError (TxBodyErrorMinUTxOMissingPParams err) = displayError err
+
 handleExUnitsErrors ::
      ScriptValidity -- ^ Mark script as expected to pass or fail validation
   -> Map ScriptWitnessIndex ScriptExecutionError
@@ -777,6 +793,11 @@ handleExUnitsErrors ScriptInvalid failuresMap exUnitsMap
             ScriptErrorEvaluationFailed _ -> True
             _ -> True
 
+data BalancedTxBody era
+  = BalancedTxBody
+      (TxBody era)
+      (TxOut CtxTx era) -- ^ Transaction balance (change output)
+      Lovelace    -- ^ Estimated transaction fee
 
 -- | This is much like 'makeTransactionBody' but with greater automation to
 -- calculate suitable values for several things.
@@ -812,7 +833,7 @@ makeTransactionBodyAutoBalance
   -> TxBodyContent BuildTx era
   -> AddressInEra era -- ^ Change address
   -> Maybe Word       -- ^ Override key witnesses
-  -> Either TxBodyErrorAutoBalance (TxBody era)
+  -> Either TxBodyErrorAutoBalance (BalancedTxBody era)
 makeTransactionBodyAutoBalance eraInMode systemstart history pparams
                             poolids utxo txbodycontent changeaddr mnkeys = do
 
@@ -825,7 +846,7 @@ makeTransactionBodyAutoBalance eraInMode systemstart history pparams
     txbody0 <-
       first TxBodyError $ makeTransactionBody txbodycontent
         { txOuts =
-              TxOut changeaddr (lovelaceToTxOutValue 0) TxOutDatumHashNone
+              TxOut changeaddr (lovelaceToTxOutValue 0) TxOutDatumNone
             : txOuts txbodycontent
             --TODO: think about the size of the change output
             -- 1,2,4 or 8 bytes?
@@ -865,7 +886,7 @@ makeTransactionBodyAutoBalance eraInMode systemstart history pparams
                  txFee  = TxFeeExplicit explicitTxFees $ Lovelace (2^(32 :: Integer) - 1),
                  txOuts = TxOut changeaddr
                                 (lovelaceToTxOutValue $ Lovelace (2^(64 :: Integer)) - 1)
-                                TxOutDatumHashNone
+                                TxOutDatumNone
                         : txOuts txbodycontent
                }
 
@@ -907,9 +928,11 @@ makeTransactionBodyAutoBalance eraInMode systemstart history pparams
       first TxBodyError $ -- TODO: impossible to fail now
         makeTransactionBody txbodycontent1 {
           txFee  = TxFeeExplicit explicitTxFees fee,
-          txOuts = TxOut changeaddr balance TxOutDatumHashNone : txOuts txbodycontent
+          txOuts = accountForNoChange
+                     (TxOut changeaddr balance TxOutDatumNone)
+                     (txOuts txbodycontent)
         }
-    return txbody3
+    return (BalancedTxBody txbody3 (TxOut changeaddr balance TxOutDatumNone) fee)
  where
    era :: ShelleyBasedEra era
    era = shelleyBasedEra
@@ -917,60 +940,41 @@ makeTransactionBodyAutoBalance eraInMode systemstart history pparams
    era' :: CardanoEra era
    era' = cardanoEra
 
+   -- In the event of spending the exact amount of lovelace in
+   -- the specified input(s), this function excludes the change
+   -- output. Note that this does not save any fees because by default
+   -- the fee calculation includes a change address for simplicity and
+   -- we make no attempt to recalculate the tx fee without a change address.
+   accountForNoChange :: TxOut CtxTx era -> [TxOut CtxTx era] -> [TxOut CtxTx era]
+   accountForNoChange change@(TxOut _ balance _) rest =
+     case txOutValueToLovelace balance of
+       Lovelace 0 -> rest
+       _ -> change : rest
+
    balanceCheck :: TxOutValue era -> Either TxBodyErrorAutoBalance ()
    balanceCheck balance
+    | txOutValueToLovelace balance == 0 = return ()
     | txOutValueToLovelace balance < 0 =
         Left . TxBodyErrorAdaBalanceNegative $ txOutValueToLovelace balance
     | otherwise =
-        case checkMinUTxOValue (TxOut changeaddr balance TxOutDatumHashNone) pparams of
+        case checkMinUTxOValue (TxOut changeaddr balance TxOutDatumNone) pparams of
           Left (TxBodyErrorMinUTxONotMet txOutAny minUTxO) ->
             Left $ TxBodyErrorAdaBalanceTooSmall txOutAny minUTxO (txOutValueToLovelace balance)
           Left err -> Left err
           Right _ -> Right ()
 
-   -- TODO: Move to top level and expose
    checkMinUTxOValue
-     :: TxOut era
+     :: TxOut CtxTx era
      -> ProtocolParameters
      -> Either TxBodyErrorAutoBalance ()
-   checkMinUTxOValue txout@(TxOut _ v _) pparams' =
-     case era of
-       ShelleyBasedEraAlonzo -> do
-         case protocolParamUTxOCostPerWord pparams' of
-           Just (Lovelace costPerWord) -> do
-             let minUTxO = Lovelace (Alonzo.utxoEntrySize (toShelleyTxOut era txout) * costPerWord)
-             if txOutValueToLovelace v >= minUTxO
-             then Right ()
-             else Left $ TxBodyErrorMinUTxONotMet (txOutInAnyEra txout) minUTxO
-           Nothing -> Left TxBodyErrorMissingParamCostPerWord
-       ShelleyBasedEraMary -> checkAllegraMaryMinUTxO txout pparams'
-       ShelleyBasedEraAllegra -> checkAllegraMaryMinUTxO txout pparams'
-       ShelleyBasedEraShelley -> do
-         let l = txOutValueToLovelace v
-         minUTxO <- minUTxOHelper pparams'
-         if l >= minUTxO
-         then Right ()
-         else Left $ TxBodyErrorMinUTxONotMet (txOutInAnyEra txout) minUTxO
-
-   checkAllegraMaryMinUTxO
-     :: TxOut era
-     -> ProtocolParameters
-     -> Either TxBodyErrorAutoBalance ()
-   checkAllegraMaryMinUTxO txOut@(TxOut _ v _) pparams' = do
-     let l = txOutValueToLovelace v
-         val = txOutValueToValue v
-     mUtxo <- minUTxOHelper pparams'
-     let minUTxO = calcMinimumDeposit val mUtxo
-     if l >= minUTxO
+   checkMinUTxOValue txout@(TxOut _ v _) pparams' = do
+     minUTxO  <- first TxBodyErrorMinUTxOMissingPParams
+                   $ calculateMinimumUTxO era txout pparams'
+     if txOutValueToLovelace v >= selectLovelace minUTxO
      then Right ()
-     else Left $ TxBodyErrorMinUTxONotMet (txOutInAnyEra txOut) minUTxO
-
-   minUTxOHelper :: ProtocolParameters
-                 -> Either TxBodyErrorAutoBalance Lovelace
-   minUTxOHelper pparams' = case protocolParamMinUTxOValue pparams' of
-                             Just minUtxo -> Right minUtxo
-                             Nothing -> Left TxBodyErrorMissingParamMinUTxO
-
+     else Left $ TxBodyErrorMinUTxONotMet
+                   (txOutInAnyEra txout)
+                   (selectLovelace minUTxO)
 
 substituteExecutionUnits :: Map ScriptWitnessIndex ExecutionUnits
                          -> TxBodyContent BuildTx era
@@ -987,3 +991,44 @@ substituteExecutionUnits exUnitsMap =
         Nothing      -> wit
         Just exunits -> PlutusScriptWitness langInEra version script
                                             datum redeemer exunits
+
+calculateMinimumUTxO
+  :: ShelleyBasedEra era
+  -> TxOut CtxTx era
+  -> ProtocolParameters
+  -> Either MinimumUTxOError Value
+calculateMinimumUTxO era txout@(TxOut _ v _) pparams' =
+  case era of
+    ShelleyBasedEraShelley -> lovelaceToValue <$> getMinUTxOPreAlonzo pparams'
+    ShelleyBasedEraAllegra -> calcMinUTxOAllegraMary
+    ShelleyBasedEraMary -> calcMinUTxOAllegraMary
+    ShelleyBasedEraAlonzo ->
+      case protocolParamUTxOCostPerWord pparams' of
+        Just (Lovelace costPerWord) -> do
+          Right . lovelaceToValue
+            $ Lovelace (Alonzo.utxoEntrySize (toShelleyTxOutAny era txout) * costPerWord)
+        Nothing -> Left PParamsUTxOCostPerWordMissing
+ where
+   calcMinUTxOAllegraMary :: Either MinimumUTxOError Value
+   calcMinUTxOAllegraMary = do
+     let val = txOutValueToValue v
+     minUTxO <- getMinUTxOPreAlonzo pparams'
+     Right . lovelaceToValue $ calcMinimumDeposit val minUTxO
+
+   getMinUTxOPreAlonzo
+     :: ProtocolParameters -> Either MinimumUTxOError Lovelace
+   getMinUTxOPreAlonzo =
+     maybe (Left PParamsMinUTxOMissing) Right . protocolParamMinUTxOValue
+
+data MinimumUTxOError =
+    PParamsMinUTxOMissing
+  | PParamsUTxOCostPerWordMissing
+  deriving Show
+
+instance Error MinimumUTxOError where
+  displayError PParamsMinUTxOMissing =
+    "\"minUtxoValue\" field not present in protocol parameters when \
+    \trying to calculate minimum UTxO value."
+  displayError PParamsUTxOCostPerWordMissing =
+    "\"utxoCostPerWord\" field not present in protocol parameters when \
+    \trying to calculate minimum UTxO value."

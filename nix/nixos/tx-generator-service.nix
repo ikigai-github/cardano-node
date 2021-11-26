@@ -24,25 +24,59 @@ let
       }
       { setLocalSocket    = localNodeSocketPath; }
       { readSigningKey    = "pass-partout"; filePath = sigKey; }
-      { importGenesisFund = "pass-partout"; fundKey  = "pass-partout"; }
+      { importGenesisFund = "pass-partout"; fundKey  = "pass-partout"; submitMode.LocalSocket = []; }
       { delay             = init_cooldown; }
     ]
     ++
-    (if continuousMode
-             ## WARNING: this could go over the genesis UTxO funds!
-     then createChangeScript cfg
-            (tx_count * tx_fee + min_utxo_value)
-            (length (__attrNames targetNodes) * 2 * inputs_per_tx)
-     else createChangeRecursive cfg
-            (min_utxo_value + tx_fee)
-            (tx_count * inputs_per_tx)
+    ( let
+        ## hard-code mainnet cost model
+        scriptFees = executionMemory * 577 / 10000 + executionSteps  * 721 / 10000000;
+
+        totalFee = if plutusMode
+                   then tx_fee + scriptFees * inputs_per_tx
+                   else tx_fee;
+        safeCollateral = max (scriptFees + tx_fee) min_utxo_value;
+        minTotalValue = min_utxo_value * outputs_per_tx + totalFee;
+        minValuePerInput = minTotalValue / inputs_per_tx + 1;
+      in
+        if !plutusMode
+          then createChangeRecursive cfg minValuePerInput (tx_count * inputs_per_tx)
+        else
+          [
+          { createChange = safeCollateral + tx_fee; count = 1;
+            submitMode.LocalSocket = []; payMode.PayToAddr = [];
+          }
+          { createChange = safeCollateral; count = 1;
+            submitMode.LocalSocket = []; payMode.PayToCollateral = [];
+          }
+          ]
+          ++ createChangePlutus cfg minValuePerInput (tx_count * inputs_per_tx)
     )
     ++
     [
-      { runBenchmark      = "walletBasedBenchmark";
-                  txCount = tx_count; tps = tps; }
-      { waitBenchmark     = "walletBasedBenchmark"; }
-    ];
+      { runBenchmark = "tx-submit-benchmark";
+        txCount = tx_count;
+        tps = tps;
+        submitMode = if !debugMode
+                     then { NodeToNode = []; }
+                     else { LocalSocket = []; };
+        spendMode = if plutusMode
+                    then { SpendScript = [
+                             (plutusScript cfg)
+                             {memory = executionMemory; steps = executionSteps; }
+                             plutusData
+                             plutusRedeemer
+                           ]; }
+                    else { SpendOutput = []; };
+      }
+    ]
+    ++
+    (
+      if !debugMode
+      then [ { waitBenchmark = "tx-submit-benchmark"; } ]
+      else [ ]
+    )
+    ;
 
   defaultGeneratorScriptFn = basicValueTxWorkload;
 
@@ -60,7 +94,20 @@ let
   capitalise = x: (pkgs.lib.toUpper (__substring 0 1 x)) + __substring 1 99999 x;
 
   createChangeScript = cfg: value: count:
-    [ { createChange = value; count=count; }
+    [ { createChange = value;
+        count = count;
+        submitMode.LocalSocket = [];
+        payMode.PayToAddr = [];
+      }
+      { delay = cfg.init_cooldown; }
+    ];
+
+  createChangeScriptPlutus = cfg: value: count:
+    [ { createChange = value;
+        count = count;
+        submitMode.LocalSocket = [];
+        payMode = { PayToScript = [ (plutusScript cfg) cfg.plutusData ]; };
+      }
       { delay = cfg.init_cooldown; }
     ];
 
@@ -68,6 +115,12 @@ let
     then createChangeScript cfg value count
     else createChangeRecursive cfg (value * 30 + cfg.tx_fee) (count / 30 + 1) ++ createChangeScript cfg value count;
 
+  createChangePlutus = cfg: value: count: if count <= 30
+    then createChangeScriptPlutus cfg value count
+    else createChangeRecursive cfg (value * 30 + cfg.tx_fee) (count / 30 + 1) ++ createChangeScriptPlutus cfg value count;
+
+  plutusScript = cfg: "${pkgs.plutus-scripts}/generated-plutus-scripts/${cfg.plutusScript}";
+  
 in pkgs.commonLib.defServiceModule
   (lib: with lib;
     { svcName = "tx-generator";
@@ -88,6 +141,15 @@ in pkgs.commonLib.defServiceModule
 
         ## TODO: the defaults should be externalised to a file.
         ##
+        plutusMode      = opt bool false     "Whether to benchmark Plutus scripts";
+        plutusScript    = opt str  "sum.plutus" "Path to the Plutus script";
+        plutusData      = opt int          3 "Data passed to the Plutus script (for now only an int).";
+        plutusRedeemer  = opt int          6 "Redeemer data passed to the Plutus script (for now only an int).";
+        executionMemory = opt int    1000000 "Max memory available for the Plutus script";
+        executionSteps  = opt int  700000000 "Max execution steps available for the Plutus script";
+
+        debugMode       = opt bool false     "Set debug mode: Redirect benchmarkting txs to localhost";
+
         tx_count        = opt int 1000       "How many Txs to send, total.";
         add_tx_size     = opt int 100        "Extra Tx payload, in bytes.";
         inputs_per_tx   = opt int 4          "Inputs per Tx.";

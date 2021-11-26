@@ -1,7 +1,7 @@
 cabal-version: 3.0
 
 name:                   cardano-api
-version:                1.31.0
+version:                1.30.0
 description:            The cardano api
 author:                 IOHK
 maintainer:             operations@iohk.io
@@ -67,6 +67,7 @@ library
                         Cardano.Api.KeysByron
                         Cardano.Api.KeysPraos
                         Cardano.Api.KeysShelley
+                        Cardano.Api.LedgerEvent
                         Cardano.Api.LedgerState
                         Cardano.Api.Modes
                         Cardano.Api.NetworkId
@@ -110,6 +111,7 @@ library
                       , cardano-ledger-core
                       , cardano-ledger-shelley-ma
                       , cardano-prelude
+                      , cardano-protocol-tpraos
                       , cardano-slotting
                       , cborg
                       , contra-tracer
@@ -132,7 +134,7 @@ library
                       , plutus-ledger-api
                       , prettyprinter
                       , scientific
-                      , shelley-spec-ledger
+                      , cardano-ledger-shelley
                       , small-steps
                       , stm
                       , strict-containers
@@ -174,7 +176,7 @@ library gen
                       , containers
                       , hedgehog
                       , plutus-ledger-api
-                      , shelley-spec-ledger
+                      , cardano-ledger-shelley
                       , tasty
                       , tasty-hedgehog
                       , text
@@ -203,8 +205,8 @@ test-suite cardano-api-test
                       , ouroboros-consensus
                       , ouroboros-consensus-shelley
                       , QuickCheck
-                      , shelley-spec-ledger
-                      , shelley-spec-ledger-test
+                      , cardano-ledger-shelley
+                      , cardano-ledger-shelley-test
                       , tasty
                       , tasty-quickcheck
                       , time
@@ -215,6 +217,7 @@ test-suite cardano-api-test
                         Test.Cardano.Api.KeysByron
                         Test.Cardano.Api.Ledger
                         Test.Cardano.Api.Metadata
+                        Test.Cardano.Api.Typed.Address
                         Test.Cardano.Api.Typed.Bech32
                         Test.Cardano.Api.Typed.CBOR
                         Test.Cardano.Api.Typed.Envelope

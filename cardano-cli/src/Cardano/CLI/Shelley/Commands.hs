@@ -58,7 +58,7 @@ import           Cardano.CLI.Shelley.Key (PaymentVerifier, StakeVerifier, Verifi
                    VerificationKeyOrHashOrFile, VerificationKeyTextOrFile)
 import           Cardano.CLI.Types
 
-import           Shelley.Spec.Ledger.TxBody (MIRPot)
+import           Cardano.Ledger.Shelley.TxBody (MIRPot)
 --
 -- Shelley CLI command data types
 --
@@ -117,7 +117,7 @@ renderAddressCmd cmd =
 data StakeAddressCmd
   = StakeAddressKeyGen VerificationKeyFile SigningKeyFile
   | StakeAddressKeyHash (VerificationKeyOrFile StakeKey) (Maybe OutputFile)
-  | StakeAddressBuild (VerificationKeyOrFile StakeKey) NetworkId (Maybe OutputFile)
+  | StakeAddressBuild StakeVerifier NetworkId (Maybe OutputFile)
   | StakeRegistrationCert StakeVerifier OutputFile
   | StakeCredentialDelegationCert
       StakeVerifier
@@ -167,6 +167,8 @@ data TransactionCmd
       -- ^ Transaction inputs with optional spending scripts
       [TxIn]
       -- ^ Transaction inputs for collateral, only key witnesses, no scripts.
+      [WitnessSigningData]
+      -- ^ Required signers
       [TxOutAnyEra]
       (Maybe (Value, [ScriptWitnessFiles WitCtxMint]))
       -- ^ Multi-Asset value with script witness
@@ -196,6 +198,8 @@ data TransactionCmd
       (Maybe Word)
       -- ^ Override the required number of tx witnesses
       [(TxIn, Maybe (ScriptWitnessFiles WitCtxTxIn))]
+      -- ^ Required signers
+      [WitnessSigningData]
       -- ^ Transaction inputs with optional spending scripts
       [TxIn]
       -- ^ Transaction inputs for collateral, only key witnesses, no scripts.
@@ -233,9 +237,10 @@ data TransactionCmd
       TxOutCount
       TxShelleyWitnessCount
       TxByronWitnessCount
-  | TxCalculateMinValue
+  | TxCalculateMinRequiredUTxO
+      AnyCardanoEra
       ProtocolParamsSourceSpec
-      Value
+      TxOutAnyEra
   | TxHashScriptData
       ScriptDataOrFile
   | TxGetTxId InputTxFile
@@ -267,7 +272,7 @@ renderTransactionCmd cmd =
     TxSubmit {} -> "transaction submit"
     TxMintedPolicyId {} -> "transaction policyid"
     TxCalculateMinFee {} -> "transaction calculate-min-fee"
-    TxCalculateMinValue {} -> "transaction calculate-min-value"
+    TxCalculateMinRequiredUTxO {} -> "transaction calculate-min-value"
     TxHashScriptData {} -> "transaction hash-script-data"
     TxGetTxId {} -> "transaction txid"
     TxView {} -> "transaction view"
@@ -336,6 +341,7 @@ renderPoolCmd cmd =
 data QueryCmd =
     QueryProtocolParameters' AnyConsensusModeParams NetworkId (Maybe OutputFile)
   | QueryTip AnyConsensusModeParams NetworkId (Maybe OutputFile)
+  | QueryStakePools' AnyConsensusModeParams NetworkId (Maybe OutputFile)
   | QueryStakeDistribution' AnyConsensusModeParams NetworkId (Maybe OutputFile)
   | QueryStakeAddressInfo AnyConsensusModeParams StakeAddress NetworkId (Maybe OutputFile)
   | QueryUTxO' AnyConsensusModeParams QueryUTxOFilter NetworkId (Maybe OutputFile)
@@ -350,6 +356,7 @@ renderQueryCmd cmd =
   case cmd of
     QueryProtocolParameters' {} -> "query protocol-parameters "
     QueryTip {} -> "query tip"
+    QueryStakePools' {} -> "query stake-pools"
     QueryStakeDistribution' {} -> "query stake-distribution"
     QueryStakeAddressInfo {} -> "query stake-address-info"
     QueryUTxO' {} -> "query utxo"

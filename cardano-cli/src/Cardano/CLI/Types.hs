@@ -20,6 +20,7 @@ module Cardano.CLI.Types
   , TransferDirection(..)
   , TxOutAnyEra (..)
   , TxOutChangeAddress (..)
+  , TxOutDatumAnyEra (..)
   , UpdateProposalFile (..)
   , VerificationKeyFile (..)
   , Stakes (..)
@@ -38,7 +39,7 @@ import           Cardano.Api
 
 import qualified Cardano.Ledger.Crypto as Crypto
 
-import           Shelley.Spec.Ledger.TxBody (PoolParams (..))
+import           Cardano.Ledger.Shelley.TxBody (PoolParams (..))
 
 -- | Specify what the CBOR file is
 -- i.e a block, a tx, etc
@@ -191,7 +192,13 @@ data TransferDirection = TransferToReserves | TransferToTreasury
 data TxOutAnyEra = TxOutAnyEra
                      AddressAny
                      Value
-                     (Maybe (Hash ScriptData))
+                     TxOutDatumAnyEra
+  deriving (Eq, Show)
+
+data TxOutDatumAnyEra = TxOutDatumByHashOnly (Hash ScriptData)
+                      | TxOutDatumByHashOf    ScriptDataOrFile
+                      | TxOutDatumByValue     ScriptDataOrFile
+                      | TxOutDatumByNone
   deriving (Eq, Show)
 
 -- | A partially-specified transaction output indented to use as a change
@@ -208,4 +215,3 @@ newtype TxOutChangeAddress = TxOutChangeAddress AddressAny
 -- | A flag that differentiates between automatically
 -- and manually balancing a tx.
 data BalanceTxExecUnits = AutoBalance | ManualBalance
-

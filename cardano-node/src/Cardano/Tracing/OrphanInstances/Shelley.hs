@@ -60,38 +60,38 @@ import           Cardano.Ledger.BaseTypes (strictMaybeToMaybe)
 import qualified Cardano.Ledger.Core as Core
 import qualified Cardano.Ledger.Core as Ledger
 import qualified Cardano.Ledger.Crypto as Core
+import qualified Cardano.Ledger.Era as Ledger
 import qualified Cardano.Ledger.SafeHash as SafeHash
 import qualified Cardano.Ledger.ShelleyMA.Rules.Utxo as MA
 import qualified Cardano.Ledger.ShelleyMA.Timelocks as MA
-
+import           Cardano.Protocol.TPraos.BHeader (LastAppliedBlock, labBlockNo)
+import           Cardano.Protocol.TPraos.Rules.OCert
+import           Cardano.Protocol.TPraos.Rules.Overlay
+import           Cardano.Protocol.TPraos.Rules.Updn
 
 -- TODO: this should be exposed via Cardano.Api
-import           Shelley.Spec.Ledger.API hiding (ShelleyBasedEra)
-import           Shelley.Spec.Ledger.BlockChain (LastAppliedBlock (..))
+import           Cardano.Ledger.Shelley.API hiding (ShelleyBasedEra)
 
-import           Shelley.Spec.Ledger.STS.Bbody
-import           Shelley.Spec.Ledger.STS.Chain
-import           Shelley.Spec.Ledger.STS.Deleg
-import           Shelley.Spec.Ledger.STS.Delegs
-import           Shelley.Spec.Ledger.STS.Delpl
-import           Shelley.Spec.Ledger.STS.Epoch
-import           Shelley.Spec.Ledger.STS.Ledger
-import           Shelley.Spec.Ledger.STS.Ledgers
-import           Shelley.Spec.Ledger.STS.Mir
-import           Shelley.Spec.Ledger.STS.NewEpoch
-import           Shelley.Spec.Ledger.STS.Newpp
-import           Shelley.Spec.Ledger.STS.Ocert
-import           Shelley.Spec.Ledger.STS.Overlay
-import           Shelley.Spec.Ledger.STS.Pool
-import           Shelley.Spec.Ledger.STS.PoolReap
-import           Shelley.Spec.Ledger.STS.Ppup
-import           Shelley.Spec.Ledger.STS.Rupd
-import           Shelley.Spec.Ledger.STS.Snap
-import           Shelley.Spec.Ledger.STS.Tick
-import           Shelley.Spec.Ledger.STS.Updn
-import           Shelley.Spec.Ledger.STS.Upec
-import           Shelley.Spec.Ledger.STS.Utxo
-import           Shelley.Spec.Ledger.STS.Utxow
+import           Cardano.Ledger.Shelley.Rules.Bbody
+import           Cardano.Ledger.Shelley.Rules.Chain
+import           Cardano.Ledger.Shelley.Rules.Deleg
+import           Cardano.Ledger.Shelley.Rules.Delegs
+import           Cardano.Ledger.Shelley.Rules.Delpl
+import           Cardano.Ledger.Shelley.Rules.Epoch
+import           Cardano.Ledger.Shelley.Rules.Ledger
+import           Cardano.Ledger.Shelley.Rules.Ledgers
+import           Cardano.Ledger.Shelley.Rules.Mir
+import           Cardano.Ledger.Shelley.Rules.NewEpoch
+import           Cardano.Ledger.Shelley.Rules.Newpp
+import           Cardano.Ledger.Shelley.Rules.Pool
+import           Cardano.Ledger.Shelley.Rules.PoolReap
+import           Cardano.Ledger.Shelley.Rules.Ppup
+import           Cardano.Ledger.Shelley.Rules.Rupd
+import           Cardano.Ledger.Shelley.Rules.Snap
+import           Cardano.Ledger.Shelley.Rules.Tick
+import           Cardano.Ledger.Shelley.Rules.Upec
+import           Cardano.Ledger.Shelley.Rules.Utxo
+import           Cardano.Ledger.Shelley.Rules.Utxow
 
 {- HLINT ignore "Use :" -}
 
@@ -126,7 +126,7 @@ instance ( ShelleyBasedEra era
   toObject verb (ApplyTxError predicateFailures) =
     HMS.unions $ map (toObject verb) predicateFailures
 
-instance ToObject (TPraosCannotForge era) where
+instance Core.Crypto crypto => ToObject (TPraosCannotForge crypto) where
   toObject _verb (TPraosCannotForgeKeyNotUsableYet wallClockPeriod keyStartPeriod) =
     mkObject
       [ "kind" .= String "TPraosCannotForgeKeyNotUsableYet"
@@ -183,7 +183,7 @@ instance ( ShelleyBasedEra era
              , "updates" .= map (toObject verb) updates
              ]
 
-instance ToJSON (Ledger.PParamsDelta era)
+instance (Ledger.Era era, ToJSON (Ledger.PParamsDelta era))
          => ToObject (ProtocolUpdate era) where
   toObject verb ProtocolUpdate{protocolUpdateProposal, protocolUpdateState} =
     mkObject [ "proposal" .= toObject verb protocolUpdateProposal
@@ -198,7 +198,7 @@ instance ToJSON (Ledger.PParamsDelta era)
              , "epoch"   .= proposalEpoch
              ]
 
-instance ToObject (UpdateState crypto) where
+instance Core.Crypto crypto => ToObject (UpdateState crypto) where
   toObject _verb UpdateState{proposalVotes, proposalReachedQuorum} =
     mkObject [ "proposal"      .= proposalVotes
              , "reachedQuorum" .= proposalReachedQuorum
@@ -534,7 +534,7 @@ renderValueNotConservedErr :: Show val => val -> val -> Aeson.Value
 renderValueNotConservedErr consumed produced = String $
     "This transaction consumed " <> show consumed <> " but produced " <> show produced
 
-instance ToObject (PpupPredicateFailure era) where
+instance Ledger.Era era => ToObject (PpupPredicateFailure era) where
   toObject _verb (NonGenesisUpdatePPUP proposalKeys genesisKeys) =
     mkObject [ "kind" .= String "NonGenesisUpdatePPUP"
              , "keys" .= proposalKeys Set.\\ genesisKeys ]
@@ -570,7 +570,7 @@ instance ( ToObject (PredicateFailure (Core.EraRule "POOL" era))
   toObject verb (PoolFailure f) = toObject verb f
   toObject verb (DelegFailure f) = toObject verb f
 
-instance ToObject (DelegPredicateFailure era) where
+instance Ledger.Era era => ToObject (DelegPredicateFailure era) where
   toObject _verb (StakeKeyAlreadyRegisteredDELEG alreadyRegistered) =
     mkObject [ "kind" .= String "StakeKeyAlreadyRegisteredDELEG"
              , "credential" .= String (textShow alreadyRegistered)
@@ -1043,4 +1043,4 @@ showLastAppBlockNo wOblk =  case withOriginToMaybe wOblk of
 
 deriving newtype instance Core.Crypto crypto => ToJSON (Core.AuxiliaryDataHash crypto)
 
-deriving newtype instance ToJSON (TxId crypto)
+deriving newtype instance Core.Crypto crypto => ToJSON (TxId crypto)

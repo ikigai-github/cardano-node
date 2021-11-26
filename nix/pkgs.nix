@@ -5,9 +5,7 @@ final: prev: with final;
   in {
   cardanoNodeProject = import ./haskell.nix {
     inherit compiler-nix-name
-      pkgs
       lib
-      stdenv
       haskell-nix
       buildPackages
       gitrev
@@ -16,41 +14,29 @@ final: prev: with final;
   cardanoNodeHaskellPackages = cardanoNodeProject.hsPkgs;
   cardanoNodeProfiledHaskellPackages = (import ./haskell.nix {
     inherit compiler-nix-name
-      pkgs
       lib
-      stdenv
       haskell-nix
       buildPackages
       gitrev
       ;
-    inherit (cardanoNodeProject) projectPackages;
-    inherit (cardanoNodeProject.projectModule) src cabalProjectLocal;
     profiling = true;
   }).hsPkgs;
   cardanoNodeEventlogHaskellPackages = (import ./haskell.nix {
     inherit compiler-nix-name
-      pkgs
       lib
-      stdenv
       haskell-nix
       buildPackages
       gitrev
       ;
-    inherit (cardanoNodeProject) projectPackages;
-    inherit (cardanoNodeProject.projectModule) src cabalProjectLocal;
     eventlog = true;
   }).hsPkgs;
   cardanoNodeAssertedHaskellPackages = (import ./haskell.nix {
     inherit compiler-nix-name
-      pkgs
       lib
-      stdenv
       haskell-nix
       buildPackages
       gitrev
       ;
-    inherit (cardanoNodeProject) projectPackages;
-    inherit (cardanoNodeProject.projectModule) src cabalProjectLocal;
     assertedPackages = [
       "ouroboros-consensus"
       "ouroboros-consensus-cardano"
@@ -73,6 +59,8 @@ final: prev: with final;
   cardano-node-eventlogged = cardanoNodeEventlogHaskellPackages.cardano-node.components.exes.cardano-node;
   cardano-node-asserted = cardanoNodeAssertedHaskellPackages.cardano-node.components.exes.cardano-node;
   tx-generator-profiled = cardanoNodeProfiledHaskellPackages.tx-generator.components.exes.tx-generator;
+  plutus-scripts = callPackage ./plutus-scripts.nix { plutus-builder = cardanoNodeHaskellPackages.plutus-example.components.exes.plutus-example; };
+
   locli-profiled = cardanoNodeProfiledHaskellPackages.locli.components.exes.locli;
 
   # expose the db-converter and cardano-ping from the ouroboros-network we depend on
@@ -116,9 +104,10 @@ final: prev: with final;
 
   submitApiDockerImage = let
     defaultConfig = {
-      socketPath = "/ipc/node.socket";
+      socketPath = "/node-ipc/node.socket";
+      listenAddress = "0.0.0.0";
     };
-  in callPackage ./docker {
+  in callPackage ./docker/submit-api.nix {
     exe = "cardano-submit-api";
     scripts = import ./scripts-submit-api.nix {
       inherit pkgs;

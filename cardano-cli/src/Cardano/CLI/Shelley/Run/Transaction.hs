@@ -19,12 +19,12 @@ import           Prelude (String, error)
 import qualified Data.Aeson as Aeson
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Char8 as LBS
+import           Data.List (intersect, (\\))
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import qualified Data.Text as Text
 import           Data.Type.Equality (TestEquality (..))
 
-import           Control.Concurrent.STM
 import           Control.Monad.Trans.Except.Extra (firstExceptT, handleIOExceptT, hoistEither,
                    hoistMaybe, left, newExceptT)
 
@@ -38,7 +38,7 @@ import qualified Cardano.Binary as CBOR
 
 --TODO: following import needed for orphan Eq Script instance
 import           Cardano.Ledger.ShelleyMA.TxBody ()
-import           Shelley.Spec.Ledger.Scripts ()
+import           Cardano.Ledger.Shelley.Scripts ()
 
 import           Cardano.CLI.Environment (EnvSocketError, readEnvSocketPath, renderEnvSocketError)
 import           Cardano.CLI.Run.Friendly (friendlyTxBodyBS)
@@ -50,14 +50,11 @@ import           Cardano.CLI.Shelley.Run.Query (ShelleyQueryCmdLocalStateQueryEr
                    renderLocalStateQueryError)
 import           Cardano.CLI.Shelley.Script
 import           Cardano.CLI.Types
-import           Ouroboros.Consensus.BlockchainTime.WallClock.Types (SystemStart (..))
 import           Ouroboros.Consensus.Byron.Ledger (ByronBlock)
 import           Ouroboros.Consensus.Cardano.Block (EraMismatch (..))
 import           Ouroboros.Consensus.Ledger.SupportsMempool (ApplyTxErr)
 import           Ouroboros.Consensus.Shelley.Ledger (ShelleyBlock)
-import qualified Ouroboros.Network.Protocol.LocalStateQuery.Client as Net.Query
 import           Ouroboros.Network.Protocol.LocalStateQuery.Type (AcquireFailure (..))
-import qualified Ouroboros.Network.Protocol.LocalStateQuery.Type as Net.Query
 import qualified Ouroboros.Network.Protocol.LocalTxSubmission.Client as Net.Tx
 
 import qualified System.IO as IO
@@ -112,7 +109,10 @@ data ShelleyTxCmdError
   | ShelleyTxCmdEraConsensusModeMismatchQuery !AnyConsensusMode !AnyCardanoEra
   | ShelleyTxCmdByronEraQuery
   | ShelleyTxCmdLocalStateQueryError !ShelleyQueryCmdLocalStateQueryError
-
+  | ShelleyTxCmdExpectedKeyLockedTxIn ![TxIn]
+  | ShelleyTxCmdTxInsDoNotExist ![TxIn]
+  | ShelleyTxCmdMinimumUTxOErr !MinimumUTxOError
+  | ShelleyTxCmdPParamsErr !ProtocolParametersError
   deriving Show
 
 
@@ -233,6 +233,16 @@ renderShelleyTxCmdError err =
     ShelleyTxCmdByronEraQuery -> "Query not available in Byron era"
     ShelleyTxCmdLocalStateQueryError err' -> renderLocalStateQueryError err'
     ShelleyTxCmdBalanceTxBody err' -> Text.pack $ displayError err'
+    ShelleyTxCmdExpectedKeyLockedTxIn txins ->
+      "Expected key witnessed collateral tx inputs but got script witnessed tx inputs: " <>
+      Text.singleton '\n' <>
+      Text.intercalate (Text.singleton '\n') (map renderTxIn txins)
+    ShelleyTxCmdTxInsDoNotExist txins ->
+      "The following tx input(s) were not present in the UTxO: " <>
+      Text.singleton '\n' <>
+      Text.intercalate (Text.singleton '\n') (map renderTxIn txins)
+    ShelleyTxCmdMinimumUTxOErr err' -> Text.pack $ displayError err'
+    ShelleyTxCmdPParamsErr err' -> Text.pack $ displayError err'
 
 renderEra :: AnyCardanoEra -> Text
 renderEra (AnyCardanoEra ByronEra)   = "Byron"
@@ -260,21 +270,22 @@ renderFeature TxFeatureCollateral           = "Collateral inputs"
 renderFeature TxFeatureProtocolParameters   = "Protocol parameters"
 renderFeature TxFeatureTxOutDatum           = "Transaction output datums"
 renderFeature TxFeatureScriptValidity       = "Script validity"
+renderFeature TxFeatureExtraKeyWits         = "Required signers"
 
 runTransactionCmd :: TransactionCmd -> ExceptT ShelleyTxCmdError IO ()
 runTransactionCmd cmd =
   case cmd of
-    TxBuild era consensusModeParams nid mScriptValidity mOverrideWits txins txinsc txouts
-            changeAddr mValue mLowBound mUpperBound certs wdrls metadataSchema
+    TxBuild era consensusModeParams nid mScriptValidity mOverrideWits txins reqSigners
+            txinsc txouts changeAddr mValue mLowBound mUpperBound certs wdrls metadataSchema
             scriptFiles metadataFiles mpparams mUpProp out ->
       runTxBuild era consensusModeParams nid mScriptValidity txins txinsc txouts changeAddr mValue mLowBound
-                 mUpperBound certs wdrls metadataSchema scriptFiles
+                 mUpperBound certs wdrls reqSigners metadataSchema scriptFiles
                  metadataFiles mpparams mUpProp out mOverrideWits
-    TxBuildRaw era mScriptValidity txins txinsc txouts mValue mLowBound mUpperBound
+    TxBuildRaw era mScriptValidity txins txinsc reqSigners txouts mValue mLowBound mUpperBound
                fee certs wdrls metadataSchema scriptFiles
                metadataFiles mpparams mUpProp out ->
       runTxBuildRaw era mScriptValidity txins txinsc txouts mLowBound mUpperBound
-                    fee mValue certs wdrls metadataSchema
+                    fee mValue certs wdrls reqSigners metadataSchema
                     scriptFiles metadataFiles mpparams mUpProp out
     TxSign txinfile skfiles network txoutfile ->
       runTxSign txinfile skfiles network txoutfile
@@ -284,7 +295,7 @@ runTransactionCmd cmd =
                       nShelleyKeyWitnesses nByronKeyWitnesses ->
       runTxCalculateMinFee txbody mnw pGenesisOrParamsFile nInputs nOutputs
                            nShelleyKeyWitnesses nByronKeyWitnesses
-    TxCalculateMinValue pParamSpec txOuts -> runTxCalculateMinValue pParamSpec txOuts
+    TxCalculateMinRequiredUTxO era pParamSpec txOuts -> runTxCalculateMinRequiredUTxO era pParamSpec txOuts
     TxHashScriptData scriptDataOrFile -> runTxHashScriptData scriptDataOrFile
     TxGetTxId txinfile -> runTxGetTxId txinfile
     TxView txinfile -> runTxView txinfile
@@ -318,6 +329,8 @@ runTxBuildRaw
   -> [(CertificateFile, Maybe (ScriptWitnessFiles WitCtxStake))]
   -- ^ Certificate with potential script witness
   -> [(StakeAddress, Lovelace, Maybe (ScriptWitnessFiles WitCtxStake))]
+  -> [WitnessSigningData]
+  -- ^ Required signers
   -> TxMetadataJsonSchema
   -> [ScriptFile]
   -> [MetadataFile]
@@ -329,7 +342,7 @@ runTxBuildRaw (AnyCardanoEra era)
               mScriptValidity inputsAndScripts inputsCollateral txouts
               mLowerBound mUpperBound
               mFee mValue
-              certFiles withdrawals
+              certFiles withdrawals reqSigners
               metadataSchema scriptFiles
               metadataFiles mpparams mUpdatePropFile
               (TxBodyFile fpath) = do
@@ -344,8 +357,7 @@ runTxBuildRaw (AnyCardanoEra era)
                  <*> validateTxValidityUpperBound era mUpperBound)
         <*> validateTxMetadataInEra  era metadataSchema metadataFiles
         <*> validateTxAuxScripts     era scriptFiles
-        <*> pure (BuildTxWith TxExtraScriptDataNone) --TODO alonzo: support this
-        <*> pure TxExtraKeyWitnessesNone --TODO alonzo: support this
+        <*> validateRequiredSigners  era reqSigners
         <*> validateProtocolParameters era mpparams
         <*> validateTxWithdrawals    era withdrawals
         <*> validateTxCertificates   era certFiles
@@ -359,7 +371,6 @@ runTxBuildRaw (AnyCardanoEra era)
 
     firstExceptT ShelleyTxCmdWriteFileError . newExceptT $
       writeFileTextEnvelope fpath Nothing txBody
-
 
 runTxBuild
   :: AnyCardanoEra
@@ -384,6 +395,8 @@ runTxBuild
   -> [(CertificateFile, Maybe (ScriptWitnessFiles WitCtxStake))]
   -- ^ Certificate with potential script witness
   -> [(StakeAddress, Lovelace, Maybe (ScriptWitnessFiles WitCtxStake))]
+  -> [WitnessSigningData]
+  -- ^ Required signers
   -> TxMetadataJsonSchema
   -> [ScriptFile]
   -> [MetadataFile]
@@ -393,15 +406,15 @@ runTxBuild
   -> Maybe Word
   -> ExceptT ShelleyTxCmdError IO ()
 runTxBuild (AnyCardanoEra era) (AnyConsensusModeParams cModeParams) networkId mScriptValidity txins txinsc txouts
-           (TxOutChangeAddress changeAddr) mValue mLowerBound mUpperBound certFiles withdrawals
+           (TxOutChangeAddress changeAddr) mValue mLowerBound mUpperBound certFiles withdrawals reqSigners
            metadataSchema scriptFiles metadataFiles mpparams mUpdatePropFile outBody@(TxBodyFile fpath)
            mOverrideWits = do
   SocketPath sockPath <- firstExceptT ShelleyTxCmdSocketEnvError readEnvSocketPath
-
   let localNodeConnInfo = LocalNodeConnectInfo cModeParams networkId sockPath
       consensusMode = consensusModeOnly cModeParams
       dummyFee = Just $ Lovelace 0
       onlyInputs = [input | (input,_) <- txins]
+
   case (consensusMode, cardanoEraStyle era) of
     (CardanoMode, ShelleyBasedEra sbe) -> do
       txBodyContent <-
@@ -414,8 +427,7 @@ runTxBuild (AnyCardanoEra era) (AnyConsensusModeParams cModeParams) networkId mS
                    <*> validateTxValidityUpperBound era mUpperBound)
           <*> validateTxMetadataInEra     era metadataSchema metadataFiles
           <*> validateTxAuxScripts        era scriptFiles
-          <*> pure (BuildTxWith TxExtraScriptDataNone) --TODO alonzo: support this
-          <*> pure TxExtraKeyWitnessesNone --TODO alonzo: support this
+          <*> validateRequiredSigners     era reqSigners
           <*> validateProtocolParameters  era mpparams
           <*> validateTxWithdrawals       era withdrawals
           <*> validateTxCertificates      era certFiles
@@ -423,37 +435,53 @@ runTxBuild (AnyCardanoEra era) (AnyConsensusModeParams cModeParams) networkId mS
           <*> validateTxMintValue         era mValue
           <*> validateTxScriptValidity    era mScriptValidity
 
-      -- TODO: Combine queries
-      let localConnInfo = LocalNodeConnectInfo
-                            { localConsensusModeParams = CardanoModeParams (EpochSlots 21600)
-                            , localNodeNetworkId       = networkId
-                            , localNodeSocketPath      = sockPath
-                            }
-
       eInMode <- case toEraInMode era CardanoMode of
                    Just result -> return result
                    Nothing ->
                      left (ShelleyTxCmdEraConsensusModeMismatchTxBalance outBody
                             (AnyConsensusMode CardanoMode) (AnyCardanoEra era))
 
-      let utxoQuery = QueryInEra eInMode $ QueryInShelleyBasedEra sbe
-                        (QueryUTxO . QueryUTxOByTxIn $ Set.fromList onlyInputs)
-      let pParamsQuery = QueryInEra eInMode $ QueryInShelleyBasedEra sbe QueryProtocolParameters
-      utxo <- executeQuery era cModeParams localConnInfo utxoQuery
-      pparams <- executeQuery era cModeParams localConnInfo pParamsQuery
-      (eraHistory, systemStart) <- firstExceptT ShelleyTxCmdAcquireFailure
-                                     $ newExceptT $ queryEraHistoryAndSystemStart localNodeConnInfo Nothing
+      (utxo, pparams, eraHistory, systemStart, stakePools) <-
+        newExceptT . fmap (join . first ShelleyTxCmdAcquireFailure) $
+          executeLocalStateQueryExpr localNodeConnInfo Nothing $ \_ntcVersion -> runExceptT $ do
+            unless (null txinsc) $ do
+              collateralUtxo <- firstExceptT ShelleyTxCmdTxSubmitErrorEraMismatch . newExceptT . queryExpr
+                $ QueryInEra eInMode
+                $ QueryInShelleyBasedEra sbe (QueryUTxO . QueryUTxOByTxIn $ Set.fromList txinsc)
+              txinsExist txinsc collateralUtxo
+              notScriptLockedTxIns collateralUtxo
+
+            utxo <- firstExceptT ShelleyTxCmdTxSubmitErrorEraMismatch . newExceptT . queryExpr
+              $ QueryInEra eInMode $ QueryInShelleyBasedEra sbe
+              $ QueryUTxO (QueryUTxOByTxIn (Set.fromList onlyInputs))
+
+            txinsExist onlyInputs utxo
+
+            pparams <- firstExceptT ShelleyTxCmdTxSubmitErrorEraMismatch . newExceptT . queryExpr
+              $ QueryInEra eInMode $ QueryInShelleyBasedEra sbe QueryProtocolParameters
+
+            eraHistory <- lift . queryExpr $ QueryEraHistory CardanoModeIsMultiEra
+
+            systemStart <- lift $ queryExpr QuerySystemStart
+
+
+            stakePools <- firstExceptT ShelleyTxCmdTxSubmitErrorEraMismatch . ExceptT $
+              queryExpr . QueryInEra eInMode . QueryInShelleyBasedEra sbe $ QueryStakePools
+
+            return (utxo, pparams, eraHistory, systemStart, stakePools)
 
       let cAddr = case anyAddressInEra era changeAddr of
                     Just addr -> addr
                     Nothing -> error $ "runTxBuild: Byron address used: " <> show changeAddr
 
-      balancedTxBody <-
+      (BalancedTxBody balancedTxBody _ fee) <-
         firstExceptT ShelleyTxCmdBalanceTxBody
           . hoistEither
           $ makeTransactionBodyAutoBalance eInMode systemStart eraHistory
-                                           pparams Set.empty utxo txBodyContent
+                                           pparams stakePools utxo txBodyContent
                                            cAddr mOverrideWits
+
+      putStrLn $ "Estimated transaction fee: " <> (show fee :: String)
 
       firstExceptT ShelleyTxCmdWriteFileError . newExceptT
         $ writeFileTextEnvelope fpath Nothing balancedTxBody
@@ -461,48 +489,24 @@ runTxBuild (AnyCardanoEra era) (AnyConsensusModeParams cModeParams) networkId mS
     (CardanoMode, LegacyByronEra) -> left ShelleyTxCmdByronEra
 
     (wrongMode, _) -> left (ShelleyTxCmdUnsupportedMode (AnyConsensusMode wrongMode))
-
-queryEraHistoryAndSystemStart
-  :: LocalNodeConnectInfo CardanoMode
-  -> Maybe ChainPoint
-  -> IO (Either Net.Query.AcquireFailure (EraHistory CardanoMode, SystemStart))
-queryEraHistoryAndSystemStart connctInfo mpoint = do
-    resultVar <- newEmptyTMVarIO
-    connectToLocalNode
-      connctInfo
-      LocalNodeClientProtocols
-      { localChainSyncClient    = NoLocalChainSyncClient
-      , localStateQueryClient   = Just (singleQuery mpoint resultVar)
-      , localTxSubmissionClient = Nothing
-      }
-    atomically (takeTMVar resultVar)
   where
-    singleQuery
-      :: Maybe ChainPoint
-      -> TMVar (Either Net.Query.AcquireFailure (EraHistory CardanoMode, SystemStart))
-      -> Net.Query.LocalStateQueryClient (BlockInMode CardanoMode) ChainPoint
-                                         (QueryInMode CardanoMode) IO ()
-    singleQuery mPointVar' resultVar' =
-      LocalStateQueryClient $ do
-      pure . Net.Query.SendMsgAcquire mPointVar' $
-        Net.Query.ClientStAcquiring
-        { Net.Query.recvMsgAcquired =
-          pure $ Net.Query.SendMsgQuery (QueryEraHistory CardanoModeIsMultiEra) $
-            Net.Query.ClientStQuerying
-            { Net.Query.recvMsgResult = \result1 -> do
-              pure $ Net.Query.SendMsgQuery QuerySystemStart $
-                Net.Query.ClientStQuerying
-                { Net.Query.recvMsgResult = \result2 -> do
-                  atomically $ putTMVar resultVar' (Right (result1, result2))
+    txinsExist :: Monad m => [TxIn] -> UTxO era -> ExceptT ShelleyTxCmdError m ()
+    txinsExist ins (UTxO utxo)
+      | null utxo = left $ ShelleyTxCmdTxInsDoNotExist ins
+      | otherwise = do
+          let utxoIns = Map.keys utxo
+              occursInUtxo = [ txin | txin <- ins, txin `elem` utxoIns ]
+          if length occursInUtxo == length ins
+          then return ()
+          else left . ShelleyTxCmdTxInsDoNotExist $ ins \\ ins `intersect` occursInUtxo
 
-                  pure $ Net.Query.SendMsgRelease $ pure $ Net.Query.SendMsgDone ()
-                }
-            }
-        , Net.Query.recvMsgFailure = \failure -> do
-            atomically $ putTMVar resultVar' (Left failure)
-            pure $ Net.Query.SendMsgDone ()
-        }
-
+    notScriptLockedTxIns :: Monad m => UTxO era -> ExceptT ShelleyTxCmdError m ()
+    notScriptLockedTxIns (UTxO utxo) = do
+      let scriptLockedTxIns =
+            filter (\(_, TxOut aInEra _ _) -> not $ isKeyAddress aInEra ) $ Map.assocs utxo
+      if null scriptLockedTxIns
+      then return ()
+      else left . ShelleyTxCmdExpectedKeyLockedTxIn $ map fst scriptLockedTxIns
 
 -- ----------------------------------------------------------------------------
 -- Transaction body validation and conversion
@@ -529,6 +533,7 @@ data TxFeature = TxFeatureShelleyAddresses
                | TxFeatureProtocolParameters
                | TxFeatureTxOutDatum
                | TxFeatureScriptValidity
+               | TxFeatureExtraKeyWits
   deriving Show
 
 txFeatureMismatch :: CardanoEra era
@@ -572,44 +577,63 @@ validateTxInsCollateral era txins =
 validateTxOuts :: forall era.
                   CardanoEra era
                -> [TxOutAnyEra]
-               -> ExceptT ShelleyTxCmdError IO [TxOut era]
-validateTxOuts era = mapM toTxOutInAnyEra
-  where
-    toTxOutInAnyEra :: TxOutAnyEra
-                    -> ExceptT ShelleyTxCmdError IO (TxOut era)
-    toTxOutInAnyEra (TxOutAnyEra addr val mDatumHash) =
-      case (scriptDataSupportedInEra era, mDatumHash) of
-        (_, Nothing) ->
-          TxOut <$> toAddressInAnyEra addr
-                <*> toTxOutValueInAnyEra val
-                <*> pure TxOutDatumHashNone
-        (Just supported, Just dh) ->
-          TxOut <$> toAddressInAnyEra addr
-                <*> toTxOutValueInAnyEra val
-                <*> pure (TxOutDatumHash supported dh)
-        (Nothing, Just _) ->
-          txFeatureMismatch era TxFeatureTxOutDatum
+               -> ExceptT ShelleyTxCmdError IO [TxOut CtxTx era]
+validateTxOuts era = mapM (toTxOutInAnyEra era)
 
-    toAddressInAnyEra :: AddressAny -> ExceptT ShelleyTxCmdError IO (AddressInEra era)
-    toAddressInAnyEra addrAny =
-      case addrAny of
-        AddressByron   bAddr -> return (AddressInEra ByronAddressInAnyEra bAddr)
-        AddressShelley sAddr ->
-          case cardanoEraStyle era of
-            LegacyByronEra -> txFeatureMismatch era TxFeatureShelleyAddresses
+toAddressInAnyEra
+  :: CardanoEra era
+  -> AddressAny
+  -> ExceptT ShelleyTxCmdError IO (AddressInEra era)
+toAddressInAnyEra era addrAny =
+  case addrAny of
+    AddressByron   bAddr -> return (AddressInEra ByronAddressInAnyEra bAddr)
+    AddressShelley sAddr ->
+      case cardanoEraStyle era of
+        LegacyByronEra -> txFeatureMismatch era TxFeatureShelleyAddresses
+        ShelleyBasedEra era' ->
+          return (AddressInEra (ShelleyAddressInEra era') sAddr)
 
-            ShelleyBasedEra era' ->
-              return (AddressInEra (ShelleyAddressInEra era') sAddr)
+toTxOutValueInAnyEra
+  :: CardanoEra era
+  -> Value
+  -> ExceptT ShelleyTxCmdError IO (TxOutValue era)
+toTxOutValueInAnyEra era val =
+  case multiAssetSupportedInEra era of
+    Left adaOnlyInEra ->
+      case valueToLovelace val of
+        Just l  -> return (TxOutAdaOnly adaOnlyInEra l)
+        Nothing -> txFeatureMismatch era TxFeatureMultiAssetOutputs
+    Right multiAssetInEra -> return (TxOutValue multiAssetInEra val)
 
-    toTxOutValueInAnyEra :: Value -> ExceptT ShelleyTxCmdError IO (TxOutValue era)
-    toTxOutValueInAnyEra val =
-      case multiAssetSupportedInEra era of
-        Left adaOnlyInEra ->
-          case valueToLovelace val of
-            Just l  -> return (TxOutAdaOnly adaOnlyInEra l)
-            Nothing -> txFeatureMismatch era TxFeatureMultiAssetOutputs
-        Right multiAssetInEra -> return (TxOutValue multiAssetInEra val)
+toTxOutInAnyEra :: CardanoEra era
+                -> TxOutAnyEra
+                -> ExceptT ShelleyTxCmdError IO (TxOut CtxTx era)
+toTxOutInAnyEra era (TxOutAnyEra addr val mDatumHash) =
+  case (scriptDataSupportedInEra era, mDatumHash) of
+    (_, TxOutDatumByNone) ->
+      TxOut <$> toAddressInAnyEra era addr
+            <*> toTxOutValueInAnyEra era val
+            <*> pure TxOutDatumNone
 
+    (Just supported, TxOutDatumByHashOnly dh) ->
+      TxOut <$> toAddressInAnyEra era addr
+            <*> toTxOutValueInAnyEra era val
+            <*> pure (TxOutDatumHash supported dh)
+
+    (Just supported, TxOutDatumByHashOf fileOrSdata) -> do
+      sData <- readScriptDataOrFile fileOrSdata
+      TxOut <$> toAddressInAnyEra era addr
+            <*> toTxOutValueInAnyEra era val
+            <*> pure (TxOutDatumHash supported $ hashScriptData sData)
+
+    (Just supported, TxOutDatumByValue fileOrSdata) -> do
+      sData <- readScriptDataOrFile fileOrSdata
+      TxOut <$> toAddressInAnyEra era addr
+            <*> toTxOutValueInAnyEra era val
+            <*> pure (TxOutDatum supported sData)
+
+    (Nothing, _) ->
+      txFeatureMismatch era TxFeatureTxOutDatum
 
 validateTxFee :: CardanoEra era
               -> Maybe Lovelace
@@ -675,6 +699,25 @@ validateTxAuxScripts era files =
              validateScriptSupportedInEra era script
         | ScriptFile file <- files ]
       return $ TxAuxScripts supported scripts
+
+validateRequiredSigners :: CardanoEra era
+                        -> [WitnessSigningData]
+                        -> ExceptT ShelleyTxCmdError IO (TxExtraKeyWitnesses era)
+validateRequiredSigners _ [] = return TxExtraKeyWitnessesNone
+validateRequiredSigners era reqSigs =
+  case extraKeyWitnessesSupportedInEra era of
+    Nothing -> txFeatureMismatch era TxFeatureExtraKeyWits
+    Just supported -> do
+      keyWits <- firstExceptT ShelleyTxCmdReadWitnessSigningDataError
+                   $ mapM readWitnessSigningData reqSigs
+      let (_sksByron, sksShelley) = partitionSomeWitnesses $ map categoriseSomeWitness keyWits
+          shelleySigningKeys = map toShelleySigningKey sksShelley
+          paymentKeyHashes = map (verificationKeyHash . getVerificationKey) $ mapMaybe excludeExtendedKeys shelleySigningKeys
+      return $ TxExtraKeyWitnesses supported paymentKeyHashes
+ where
+  excludeExtendedKeys :: ShelleySigningKey -> Maybe (SigningKey PaymentKey)
+  excludeExtendedKeys (ShelleyExtendedSigningKey _) = Nothing
+  excludeExtendedKeys (ShelleyNormalSigningKey sk) = Just $ PaymentSigningKey sk
 
 validateTxWithdrawals
   :: forall era.
@@ -1017,21 +1060,22 @@ runTxCalculateMinFee (TxBodyFile txbodyFile) nw protocolParamsSourceSpec
 -- Transaction fee calculation
 --
 
-runTxCalculateMinValue
-  :: ProtocolParamsSourceSpec
-  -> Value
+runTxCalculateMinRequiredUTxO
+  :: AnyCardanoEra
+  -> ProtocolParamsSourceSpec
+  -> TxOutAnyEra
   -> ExceptT ShelleyTxCmdError IO ()
-runTxCalculateMinValue protocolParamsSourceSpec value = do
+runTxCalculateMinRequiredUTxO (AnyCardanoEra era) protocolParamsSourceSpec txOut = do
   pp <- readProtocolParametersSourceSpec protocolParamsSourceSpec
-
-  let minValues =
-        case protocolParamMinUTxOValue pp of
-          Nothing -> panic "TODO alonzo: runTxCalculateMinValue using new protocol params"
-          --TODO alonzo: there is a new formula for the min amount of ada in
-          -- a tx output, which uses a new param protocolParamUTxOCostPerWord
-          Just minUTxOValue -> calcMinimumDeposit value minUTxOValue
-
-  liftIO $ IO.print minValues
+  out <- toTxOutInAnyEra era txOut
+  case cardanoEraStyle era of
+    LegacyByronEra -> error "runTxCalculateMinRequiredUTxO: Byron era not implemented yet"
+    ShelleyBasedEra sbe -> do
+      firstExceptT ShelleyTxCmdPParamsErr . hoistEither
+        $ checkProtocolParameters sbe pp
+      minValue <- firstExceptT ShelleyTxCmdMinimumUTxOErr
+                    . hoistEither $ calculateMinimumUTxO sbe out pp
+      liftIO . IO.print $ selectLovelace minValue
 
 runTxCreatePolicyId :: ScriptFile -> ExceptT ShelleyTxCmdError IO ()
 runTxCreatePolicyId (ScriptFile sFile) = do
@@ -1433,38 +1477,3 @@ readFileTxMetadata _ (MetadataFileCBOR fp) = do
     firstExceptT (ShelleyTxCmdMetaValidationError fp) $ hoistEither $ do
         validateTxMetadata txMetadata
         return txMetadata
-
-executeQuery
-  :: forall result era mode. CardanoEra era
-  -> ConsensusModeParams mode
-  -> LocalNodeConnectInfo mode
-  -> QueryInMode mode (Either EraMismatch result)
-  -> ExceptT ShelleyTxCmdError IO result
-executeQuery era cModeP localNodeConnInfo q = do
-  eraInMode <- calcEraInMode era $ consensusModeOnly cModeP
-  case eraInMode of
-    ByronEraInByronMode -> left ShelleyTxCmdByronEraQuery
-    _ -> liftIO execQuery >>= queryResult
- where
-   execQuery :: IO (Either AcquireFailure (Either EraMismatch result))
-   execQuery = queryNodeLocalState localNodeConnInfo Nothing q
-
-
-queryResult
-  :: Either AcquireFailure (Either EraMismatch a)
-  -> ExceptT ShelleyTxCmdError IO a
-queryResult eAcq =
-  case eAcq of
-    Left acqFailure -> left $ ShelleyTxCmdAcquireFailure acqFailure
-    Right eResult ->
-      case eResult of
-        Left err -> left . ShelleyTxCmdLocalStateQueryError $ EraMismatchError err
-        Right result -> return result
-
-calcEraInMode
-  :: CardanoEra era
-  -> ConsensusMode mode
-  -> ExceptT ShelleyTxCmdError IO (EraInMode era mode)
-calcEraInMode era mode=
-  hoistMaybe (ShelleyTxCmdEraConsensusModeMismatchQuery (AnyConsensusMode mode) (anyCardanoEra era))
-                   $ toEraInMode era mode

@@ -29,8 +29,10 @@ data FundInEra era = FundInEra {
 
 data Variant
   = PlainOldFund
-  | PlutusScriptFund
--- | DedicatedCollateral
+  | PlutusScriptFund !FilePath
+  -- A collateralFund is just a regular (PlainOldFund) on the chain,
+  -- but tagged in the wallet so that it is not selected for spending.
+  | CollateralFund
   deriving  (Show, Eq, Ord)
 
 data Validity
@@ -119,18 +121,8 @@ liftAnyEra f x = case x of
   InAnyCardanoEra AlonzoEra a  ->   InAnyCardanoEra AlonzoEra $ f a
 
 type FundSelector = FundSet -> Either String [Fund]
-
--- Select a number of confirmed Fund that where send to a specific Target node.
--- TODO: dont ignore target.
-selectCountTarget :: Int -> Target -> FundSet -> Either String [Fund]
-selectCountTarget count _target fs =
-  if length funds == count
-    then Right funds
-    else Left "could not find enough input coins"
-  where
-    -- Just take confirmed coins.
-    -- TODO: extend this to unconfimed coins to the same target node
-    funds = take count $ toAscList ( Proxy :: Proxy Lovelace) (fs @=PlainOldFund @= IsConfirmed)
+type FundSource = IO (Either String [Fund])
+type FundToStore = [Fund] -> IO ()
 
 -- Select Funds to cover a minimum value.
 -- TODO:
@@ -142,18 +134,18 @@ selectMinValue minValue fs = case coins of
     (c:_) -> Right [c]
     where coins = toAscList ( Proxy :: Proxy Lovelace) (fs @=PlainOldFund @= IsConfirmed @>= minValue)
 
-selectPlutusFund :: FundSet -> Either String [Fund]
-selectPlutusFund fs = case coins of
+selectPlutusFund :: FilePath -> FundSet -> Either String [Fund]
+selectPlutusFund scriptFile fs = case coins of
     [] -> Left "no Plutus fund found"
     (c:_) -> Right [c]
-    where coins = toAscList ( Proxy :: Proxy Lovelace) (fs @=PlutusScriptFund @= IsConfirmed )
+    where coins = toAscList ( Proxy :: Proxy Lovelace) (fs @=PlutusScriptFund scriptFile @= IsConfirmed )
 
 selectCollateral :: FundSet -> Either String [Fund]
 selectCollateral fs = case coins of
   [] -> Left "no matching none-Plutus fund found"
   (c:_) -> Right [c]
  where
-  coins = toAscList ( Proxy :: Proxy Lovelace) (fs @=PlainOldFund @= IsConfirmed @= (1492000000 :: Lovelace) )
+  coins = toAscList ( Proxy :: Proxy Lovelace) (fs @=CollateralFund @= IsConfirmed )
 
 data AllowRecycle
   = UseConfirmedOnly
@@ -235,6 +227,23 @@ selectInputs allowRecycle count minTotalValue variant targetNode fs
     where
       -- inFlightCoins and confirmedCoins are disjoint
       inFlightCoins = toAscList (Proxy :: Proxy SeqNumber) (variantIxSet @=IsNotConfirmed)
+
+selectToBuffer ::
+     Int
+  -> Lovelace
+  -> Variant
+  -> FundSet
+  -> Either String [Fund]
+selectToBuffer count minValue variant fs
+  = if length coins < count
+    then Left $ concat
+      [ "selectToBuffer: not enough coins found: count: ", show count
+      , " minValue: ", show minValue
+      , " variant: ", show variant
+      ]
+    else Right coins
+ where
+  coins = take count $ toAscList ( Proxy :: Proxy Lovelace) (fs @=variant @= IsConfirmed @>= minValue)
 
 -- Todo: check sufficant funds and minimumValuePerUtxo
 inputsToOutputsWithFee :: Lovelace -> Int -> [Lovelace] -> [Lovelace]

@@ -84,6 +84,7 @@ module Cardano.Api (
 
     -- ** Addresses in specific eras
     AddressInEra(..),
+    isKeyAddress,
     AddressTypeInEra(..),
     byronAddressInEra,
     shelleyAddressInEra,
@@ -167,10 +168,10 @@ module Cardano.Api (
     TxIx(TxIx),
 
     -- ** Transaction outputs
+    CtxTx, CtxUTxO,
     TxOut(TxOut),
     TxOutValue(..),
-    serialiseAddressForTxOut,
-    TxOutDatumHash(..),
+    TxOutDatum(..),
 
     -- ** Other transaction body types
     TxInsCollateral(..),
@@ -181,7 +182,6 @@ module Cardano.Api (
     EpochSlots(..),
     TxMetadataInEra(..),
     TxAuxScripts(..),
-    TxExtraScriptData(..),
     TxExtraKeyWitnesses(..),
     TxWithdrawals(..),
     TxCertificates(..),
@@ -231,16 +231,21 @@ module Cardano.Api (
     evaluateTransactionFee,
     estimateTransactionKeyWitnessCount,
 
+    -- ** Minimum required UTxO calculation
+    calculateMinimumUTxO,
+    MinimumUTxOError,
+
     -- ** Script execution units
     evaluateTransactionExecutionUnits,
     ScriptExecutionError(..),
-    TransactionValidityIntervalError,
+    TransactionValidityIntervalError(..),
 
     -- ** Transaction balance
     evaluateTransactionBalance,
 
     -- ** Building transactions with automated fees and balancing
     makeTransactionBodyAutoBalance,
+    BalancedTxBody(..),
     TxBodyErrorAutoBalance(..),
     TxScriptValidity(..),
     ScriptValidity(..),
@@ -288,7 +293,7 @@ module Cardano.Api (
     TxMetadataJsonSchemaError (..),
 
     -- * Certificates
-    Certificate,
+    Certificate(..),
 
     -- ** Registering stake address and delegating
     -- | Certificates that are embedded in transactions for registering and
@@ -482,9 +487,12 @@ module Cardano.Api (
     LedgerState(..),
     initialLedgerState,
     applyBlock,
+    ValidationMode(..),
 
     -- *** Traversing the block chain
     foldBlocks,
+    chainSyncClientWithLedgerState,
+    chainSyncClientPipelinedWithLedgerState,
 
     -- *** Errors
     FoldBlocksError(..),
@@ -580,8 +588,13 @@ module Cardano.Api (
     NetworkMagic(..),
 
     -- ** Conversions
+    toLedgerPParams,
+    fromLedgerPParams,
+    toCtxUTxOTxOut,
     --TODO: arrange not to export these
     toNetworkMagic,
+    fromLedgerTxOuts,
+    toLedgerUTxO,
     --TODO: Remove after updating cardano-node-chairman with new IPC
     SomeNodeClientProtocol(..),
 
@@ -592,9 +605,16 @@ module Cardano.Api (
     NodeToClientVersion(..),
 
     -- ** Monadic queries
-    LocalStateQueryScript,
-    sendMsgQuery,
-    setupLocalStateQueryScript
+    LocalStateQueryExpr,
+    executeLocalStateQueryExpr,
+    executeLocalStateQueryExprWithChainSync,
+    queryExpr,
+    determineEraExpr,
+
+    chainPointToSlotNo,
+    chainPointToHeaderHash,
+    makeChainTip
+
   ) where
 
 import           Cardano.Api.Address

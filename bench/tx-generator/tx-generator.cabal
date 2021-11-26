@@ -1,5 +1,5 @@
 name:                  tx-generator
-version:               1.29
+version:               1.30
 description:           The transaction generator for cardano node
 author:                IOHK
 maintainer:            operations@iohk.io
@@ -49,9 +49,11 @@ library
                        Cardano.Benchmarking.Script.Example
                        Cardano.Benchmarking.Script.Setters
                        Cardano.Benchmarking.Script.Store
+                       Cardano.Benchmarking.Script.Types
                        Cardano.Benchmarking.Tracer
                        Cardano.Benchmarking.Types
                        Cardano.Benchmarking.Wallet
+                       Cardano.Benchmarking.ListBufferedSelector
                        Cardano.Benchmarking.PlutusExample
 
   other-modules:       Paths_tx_generator
@@ -95,7 +97,7 @@ library
                      , ouroboros-network-framework
                      , random
                      , serialise
-                     , shelley-spec-ledger
+                     , cardano-ledger-shelley
                      , stm
                      , text
                      , time

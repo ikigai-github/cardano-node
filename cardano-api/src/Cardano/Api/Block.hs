@@ -38,6 +38,10 @@ module Cardano.Api.Block (
 
     -- * Data family instances
     Hash(..),
+
+    chainPointToHeaderHash,
+    chainPointToSlotNo,
+    makeChainTip,
   ) where
 
 import           Prelude
@@ -49,7 +53,7 @@ import qualified Data.ByteString.Short as SBS
 import           Data.Foldable (Foldable (toList))
 
 import           Cardano.Slotting.Block (BlockNo)
-import           Cardano.Slotting.Slot (EpochNo, SlotNo)
+import           Cardano.Slotting.Slot (EpochNo, SlotNo, WithOrigin (..))
 
 import qualified Cardano.Crypto.Hash.Class
 import qualified Cardano.Crypto.Hashing
@@ -66,7 +70,8 @@ import qualified Ouroboros.Network.Block as Consensus
 import qualified Cardano.Chain.Block as Byron
 import qualified Cardano.Chain.UTxO as Byron
 import qualified Cardano.Ledger.Era as Ledger
-import qualified Shelley.Spec.Ledger.BlockChain as Ledger
+import qualified Cardano.Protocol.TPraos.BHeader as Praos
+import qualified Cardano.Ledger.Shelley.BlockChain as Ledger
 
 import           Cardano.Api.Eras
 import           Cardano.Api.HasTypeProxy
@@ -249,14 +254,14 @@ getBlockHeader (ShelleyBlock shelleyEra block) = case shelleyEra of
   ShelleyBasedEraShelley -> go
   ShelleyBasedEraAllegra -> go
   ShelleyBasedEraMary -> go
-  ShelleyBasedEraAlonzo -> error "getBlockHeader: Alonzo era not implemented yet"
+  ShelleyBasedEraAlonzo -> go
   where
     go :: Consensus.ShelleyBasedEra (ShelleyLedgerEra era) => BlockHeader
     go = BlockHeader headerFieldSlot (HeaderHash hashSBS) headerFieldBlockNo
       where
         Consensus.HeaderFields {
             Consensus.headerFieldHash
-              = Consensus.ShelleyHash (Ledger.HashHeader (Cardano.Crypto.Hash.Class.UnsafeHash hashSBS)),
+              = Consensus.ShelleyHash (Praos.HashHeader (Cardano.Crypto.Hash.Class.UnsafeHash hashSBS)),
             Consensus.headerFieldSlot,
             Consensus.headerFieldBlockNo
           } = Consensus.getHeaderFields block
@@ -342,6 +347,14 @@ fromConsensusPoint (Consensus.BlockPoint slot h) =
     proxy :: Proxy (Consensus.ShelleyBlock ledgerera)
     proxy = Proxy
 
+chainPointToSlotNo :: ChainPoint -> Maybe SlotNo
+chainPointToSlotNo ChainPointAtGenesis = Nothing
+chainPointToSlotNo (ChainPoint slotNo _) = Just slotNo
+
+chainPointToHeaderHash :: ChainPoint -> Maybe (Hash BlockHeader)
+chainPointToHeaderHash ChainPointAtGenesis = Nothing
+chainPointToHeaderHash (ChainPoint _ blockHeader) = Just blockHeader
+
 
 -- ----------------------------------------------------------------------------
 -- Chain tips
@@ -368,6 +381,12 @@ chainTipToChainPoint :: ChainTip -> ChainPoint
 chainTipToChainPoint ChainTipAtGenesis = ChainPointAtGenesis
 chainTipToChainPoint (ChainTip s h _)  = ChainPoint s h
 
+makeChainTip :: WithOrigin BlockNo -> ChainPoint -> ChainTip
+makeChainTip woBlockNo chainPoint = case woBlockNo of
+  Origin -> ChainTipAtGenesis
+  At blockNo -> case chainPoint of
+    ChainPointAtGenesis -> ChainTipAtGenesis
+    ChainPoint slotNo headerHash -> ChainTip slotNo headerHash blockNo
 
 fromConsensusTip  :: ConsensusBlockForMode mode ~ block
                   => ConsensusMode mode
@@ -415,4 +434,3 @@ fromConsensusTip =
     conv TipGenesis                      = ChainTipAtGenesis
     conv (Tip slot (OneEraHash h) block) = ChainTip slot (HeaderHash h) block
 -}
-

@@ -43,6 +43,7 @@ module Cardano.Api.Shelley
     TxId(TxId),
     toShelleyTxId,
     fromShelleyTxId,
+    getTxIdShelley,
     TxIn(TxIn),
     toShelleyTxIn,
     fromShelleyTxIn,
@@ -77,7 +78,7 @@ module Cardano.Api.Shelley
       , WitnessGenesisDelegateKey
       , WitnessGenesisDelegateExtendedKey
       ),
-    ShelleySigningKey,
+    ShelleySigningKey(..),
     getShelleyKeyWitnessVerificationKey,
     makeShelleySignature,
     toShelleySigningKey,
@@ -91,6 +92,8 @@ module Cardano.Api.Shelley
 
     -- * Protocol parameters
     ProtocolParameters(..),
+    checkProtocolParameters,
+    ProtocolParametersError(..),
 
     -- * Scripts
     toShelleyScript,

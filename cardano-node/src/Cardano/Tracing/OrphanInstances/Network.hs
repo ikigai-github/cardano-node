@@ -27,8 +27,10 @@ import           Cardano.Tracing.ConvertTxId (ConvertTxId)
 import           Cardano.Tracing.OrphanInstances.Common
 import           Cardano.Tracing.Render
 
-import           Ouroboros.Consensus.Block (ConvertRawHash (..), getHeader)
-import           Ouroboros.Consensus.Ledger.SupportsMempool (GenTx, HasTxs (..), txId)
+import           Ouroboros.Consensus.Block (ConvertRawHash (..), Header, getHeader)
+import           Ouroboros.Consensus.Ledger.Query (BlockQuery, Query)
+import           Ouroboros.Consensus.Ledger.SupportsMempool (ApplyTxErr, GenTx, GenTxId,
+                   HasTxs (..), TxId, txId)
 import           Ouroboros.Consensus.Node.Run (RunNode, estimateBlockSize)
 import qualified Ouroboros.Network.AnchoredFragment as AF
 import qualified Ouroboros.Network.AnchoredSeq as AS
@@ -90,6 +92,7 @@ instance HasPrivacyAnnotation NtN.AcceptConnectionsPolicyTrace
 instance HasSeverityAnnotation NtN.AcceptConnectionsPolicyTrace where
   getSeverityAnnotation NtN.ServerTraceAcceptConnectionRateLimiting {} = Info
   getSeverityAnnotation NtN.ServerTraceAcceptConnectionHardLimit {} = Warning
+  getSeverityAnnotation NtN.ServerTraceAcceptConnectionResume {} = Info
 
 
 instance HasPrivacyAnnotation (TraceFetchClientState header)
@@ -342,15 +345,55 @@ instance (StandardHash header, Show peer)
       => HasTextFormatter [TraceLabelPeer peer (FetchDecision [Point header])] where
   formatText a _ = pack (show a)
 
-
-instance ( Show peer, ToObject peer, Show a, HasPrivacyAnnotation a
-         , HasSeverityAnnotation a, ToObject a)
-      => Transformable Text IO (TraceLabelPeer peer a) where
-  trTransformer = trStructuredText
-instance (Show peer, Show a)
-      => HasTextFormatter (TraceLabelPeer peer a) where
+instance (HasHeader header, ConvertRawHash header, ToObject peer)
+     => Transformable Text IO (TraceLabelPeer peer (TraceFetchClientState header)) where
+  trTransformer = trStructured
+instance (Show header, StandardHash header, Show peer)
+     => HasTextFormatter (TraceLabelPeer peer (TraceFetchClientState header)) where
   formatText a _ = pack (show a)
 
+instance ToObject peer
+     => Transformable Text IO (TraceLabelPeer peer (NtN.TraceSendRecv (ChainSync (Header blk) (Point blk) (Tip blk)))) where
+  trTransformer = trStructured
+instance (Show peer, StandardHash blk, Show (Header blk))
+     => HasTextFormatter (TraceLabelPeer peer (NtN.TraceSendRecv (ChainSync (Header blk) (Point blk) (Tip blk)))) where
+  formatText a _ = pack (show a)
+
+instance (ToObject peer, ToObject (AnyMessageAndAgency (TraceTxSubmissionInbound (GenTxId blk) (GenTx blk))))
+     => Transformable Text IO (TraceLabelPeer peer (NtN.TraceSendRecv (TraceTxSubmissionInbound  (GenTxId blk) (GenTx blk)))) where
+  trTransformer = trStructured
+
+instance ToObject peer
+     => Transformable Text IO (TraceLabelPeer peer (TraceTxSubmissionInbound  (GenTxId blk) (GenTx blk))) where
+  trTransformer = trStructured
+
+instance (ToObject peer, ConvertTxId blk, RunNode blk, HasTxs blk)
+     => Transformable Text IO (TraceLabelPeer peer (NtN.TraceSendRecv (BlockFetch blk (Point blk)))) where
+  trTransformer = trStructured
+
+instance ToObject localPeer
+     => Transformable Text IO (TraceLabelPeer localPeer (NtN.TraceSendRecv (ChainSync (Serialised blk) (Point blk) (Tip blk)))) where
+  trTransformer = trStructured
+
+instance (applyTxErr ~ ApplyTxErr blk, ToObject localPeer)
+     => Transformable Text IO (TraceLabelPeer localPeer (NtN.TraceSendRecv (LocalTxSubmission (GenTx blk) applyTxErr))) where
+  trTransformer = trStructured
+
+instance (LocalStateQuery.ShowQuery (BlockQuery blk), ToObject localPeer)
+     => Transformable Text IO (TraceLabelPeer localPeer (NtN.TraceSendRecv (LocalStateQuery blk (Point blk) (Query blk)))) where
+  trTransformer = trStructured
+
+instance (ToObject peer, Show (TxId (GenTx blk)), Show (GenTx blk))
+     => Transformable Text IO (TraceLabelPeer peer (NtN.TraceSendRecv (TxSubmission2 (GenTxId blk) (GenTx blk)))) where
+  trTransformer = trStructured
+
+instance (ToObject peer, Show (TxId (GenTx blk)), Show (GenTx blk))
+  => Transformable Text IO (TraceLabelPeer peer (NtN.TraceSendRecv (TxSubmission (GenTxId blk) (GenTx blk)))) where
+  trTransformer = trStructured
+
+instance (ToObject peer, Show (TxId (GenTx blk)), Show (GenTx blk))
+     => Transformable Text IO (TraceLabelPeer peer (TraceTxSubmissionOutbound (GenTxId blk) (GenTx blk))) where
+  trTransformer = trStructured
 
 instance Transformable Text IO (TraceTxSubmissionInbound txid tx) where
   trTransformer = trStructuredText
@@ -557,7 +600,7 @@ instance (Show txid, Show tx)
       , "agency" .= String (pack $ show stok)
       , "txs" .= String (pack $ show txs)
       ]
-  toObject _verb (AnyMessageAndAgency stok (MsgRequestTxIds _ _ _)) =
+  toObject _verb (AnyMessageAndAgency stok MsgRequestTxIds{}) =
     mkObject
       [ "kind" .= String "MsgRequestTxIds"
       , "agency" .= String (pack $ show stok)
@@ -694,6 +737,10 @@ instance ToObject NtN.AcceptConnectionsPolicyTrace where
     mkObject [ "kind" .= String "ServerTraceAcceptConnectionHardLimit"
              , "softLimit" .= show softLimit
              ]
+  toObject _verb (NtN.ServerTraceAcceptConnectionResume numOfConnections) =
+    mkObject [ "kind" .= String "ServerTraceAcceptConnectionResume"
+             , "numberOfConnection" .= show numOfConnections
+             ]
 
 
 instance ConvertRawHash blk
@@ -736,8 +783,10 @@ instance (HasHeader header, ConvertRawHash header)
           (AS.Empty{}, AS.Empty{}) -> 0
           (firstHdr AS.:< _, _ AS.:> lastHdr) ->
             blockNo lastHdr - blockNo firstHdr + 1
-  toObject _verb (BlockFetch.CompletedBlockFetch pt _ _ _ _) =
+  toObject _verb (BlockFetch.CompletedBlockFetch pt _ _ _ delay blockSize) =
     mkObject [ "kind"  .= String "CompletedBlockFetch"
+             , "delay" .= (realToFrac delay :: Double)
+             , "size"  .= blockSize
              , "block" .= String
                (case pt of
                   GenesisPoint -> "Genesis"

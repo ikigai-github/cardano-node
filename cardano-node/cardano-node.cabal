@@ -1,7 +1,7 @@
 cabal-version: 3.0
 
 name:                   cardano-node
-version:                1.31.0
+version:                1.30.0
 description:            The cardano full node
 author:                 IOHK
 maintainer:             operations@iohk.io
@@ -108,6 +108,7 @@ library
                       , cardano-ledger-core
                       , cardano-ledger-shelley-ma
                       , cardano-prelude
+                      , cardano-protocol-tpraos
                       , cardano-slotting
                       , contra-tracer
                       , cborg >= 0.2.4 && < 0.3
@@ -139,7 +140,7 @@ library
                       , process
                       , safe-exceptions
                       , scientific
-                      , shelley-spec-ledger
+                      , cardano-ledger-shelley
                       , small-steps
                       , stm
                       , text

@@ -8,6 +8,7 @@
 module Gen.Cardano.Api.Typed
   ( genAddressByron
   , genAddressShelley
+  , genCertificate
   , genMaybePraosNonce
   , genPraosNonce
   , genProtocolParameters
@@ -18,6 +19,7 @@ module Gen.Cardano.Api.Typed
   , genTxId
   , genTxIn
   , genTxOut
+  , genUTxO
 
     -- * Scripts
   , genScript
@@ -38,47 +40,50 @@ module Gen.Cardano.Api.Typed
   , genValue
   , genValueDefault
   , genVerificationKey
+  , genVerificationKeyHash
   , genUpdateProposal
   , genProtocolParametersUpdate
   , genScriptDataSupportedInAlonzoEra
   , genTxOutDatumHash
+  , genTxOutValue
+  , genValueForTxOut
+  , genValueForMinting
 
   , genRational
   ) where
 
 import           Cardano.Api hiding (txIns)
 import qualified Cardano.Api as Api
-import           Cardano.Api.Byron (Lovelace(Lovelace), KeyWitness(ByronKeyWitness),
-                    WitnessNetworkIdOrByronAddress(..) )
-import           Cardano.Api.Shelley (Hash(ScriptDataHash), KESPeriod(KESPeriod),
-                    StakePoolKey, PlutusScript(PlutusScriptSerialised),
-                    StakeCredential(StakeCredentialByKey),
-                    ProtocolParameters(ProtocolParameters),
-                    OperationalCertificateIssueCounter(OperationalCertificateIssueCounter) )
+import           Cardano.Api.Byron (KeyWitness (ByronKeyWitness), Lovelace (Lovelace),
+                   WitnessNetworkIdOrByronAddress (..))
+import           Cardano.Api.Shelley (Hash (ScriptDataHash), KESPeriod (KESPeriod),
+                   OperationalCertificateIssueCounter (OperationalCertificateIssueCounter),
+                   PlutusScript (PlutusScriptSerialised), ProtocolParameters (ProtocolParameters),
+                   StakeCredential (StakeCredentialByKey), StakePoolKey)
 
 import           Cardano.Prelude
 
 import           Control.Monad.Fail (fail)
-import           Data.Coerce
-import           Data.String
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
+import           Data.Coerce
+import           Data.String
 
 import qualified Cardano.Binary as CBOR
 import qualified Cardano.Crypto.Hash as Crypto
 import qualified Cardano.Crypto.Seed as Crypto
 import qualified Plutus.V1.Ledger.Api as Plutus
-import qualified Shelley.Spec.Ledger.TxBody as Ledger (EraIndependentTxBody)
+import qualified Cardano.Ledger.Shelley.TxBody as Ledger (EraIndependentTxBody)
 
 import           Hedgehog (Gen, Range)
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 
+import qualified Cardano.Crypto.Hash.Class as CRYPTO
+import           Cardano.Ledger.SafeHash (unsafeMakeSafeHash)
 import           Gen.Cardano.Api.Metadata (genTxMetadata)
 import           Test.Cardano.Chain.UTxO.Gen (genVKWitness)
 import           Test.Cardano.Crypto.Gen (genProtocolMagicId)
-import qualified Cardano.Crypto.Hash.Class as CRYPTO
-import           Cardano.Ledger.SafeHash (unsafeMakeSafeHash)
 
 {- HLINT ignore "Reduce duplication" -}
 
@@ -170,8 +175,9 @@ genScriptData =
     genInteger :: Gen Integer
     genInteger = Gen.integral
                   (Range.linear
-                    (-fromIntegral (maxBound :: Word64) :: Integer)
-                    ( fromIntegral (maxBound :: Word64) :: Integer))
+                    0 -- TODO: Alonzo should be -> (-fromIntegral (maxBound :: Word64) :: Integer)
+                      -- Wrapping bug needs to be fixed in Plutus library
+                    (fromIntegral (maxBound :: Word64) :: Integer))
 
     genByteString :: Gen ByteString
     genByteString = BS.pack <$> Gen.list (Range.linear 0 64)
@@ -381,11 +387,15 @@ genTxOutValue era =
     Left adaOnlyInEra     -> TxOutAdaOnly adaOnlyInEra <$> genLovelace
     Right multiAssetInEra -> TxOutValue multiAssetInEra <$> genValueForTxOut
 
-genTxOut :: CardanoEra era -> Gen (TxOut era)
+genTxOut :: CardanoEra era -> Gen (TxOut CtxTx era)
 genTxOut era =
   TxOut <$> genAddressInEra era
         <*> genTxOutValue era
         <*> genTxOutDatumHash era
+
+genUTxO :: CardanoEra era -> Gen (UTxO era)
+genUTxO era =
+  UTxO <$> Gen.map (Range.constant 0 5) ((,) <$> genTxIn <*> (toCtxUTxOTxOut <$> genTxOut era))
 
 genTtl :: Gen SlotNo
 genTtl = genSlotNo
@@ -453,12 +463,21 @@ genTxCertificates :: CardanoEra era -> Gen (TxCertificates BuildTx era)
 genTxCertificates era =
   case certificatesSupportedInEra era of
     Nothing -> pure TxCertificatesNone
-    Just supported ->
+    Just supported -> do
+      certs <- Gen.list (Range.constant 0 3) genCertificate
       Gen.choice
         [ pure TxCertificatesNone
-        , pure (TxCertificates supported mempty $ BuildTxWith mempty)
+        , pure (TxCertificates supported certs $ BuildTxWith mempty)
           -- TODO: Generate certificates
         ]
+
+-- TODO: Add remaining certificates
+genCertificate :: Gen Certificate
+genCertificate =
+  Gen.choice
+    [ StakeAddressRegistrationCertificate <$> genStakeCredential
+    , StakeAddressDeregistrationCertificate <$> genStakeCredential
+    ]
 
 genTxUpdateProposal :: CardanoEra era -> Gen (TxUpdateProposal era)
 genTxUpdateProposal era =
@@ -489,7 +508,6 @@ genTxBodyContent era = do
   txValidityRange <- genTxValidityRange era
   txMetadata <- genTxMetadataInEra era
   txAuxScripts <- genTxAuxScripts era
-  let txExtraScriptData = BuildTxWith TxExtraScriptDataNone --TODO: Alonzo era: Generate extra script data
   let txExtraKeyWits = TxExtraKeyWitnessesNone --TODO: Alonzo era: Generate witness key hashes
   txProtocolParams <- BuildTxWith <$> Gen.maybe genProtocolParameters
   txWithdrawals <- genTxWithdrawals era
@@ -506,7 +524,6 @@ genTxBodyContent era = do
     , Api.txValidityRange
     , Api.txMetadata
     , Api.txAuxScripts
-    , Api.txExtraScriptData
     , Api.txExtraKeyWits
     , Api.txProtocolParams
     , Api.txWithdrawals
@@ -751,16 +768,17 @@ genExecutionUnits = ExecutionUnits <$> Gen.integral (Range.constant 0 1000)
 genExecutionUnitPrices :: Gen ExecutionUnitPrices
 genExecutionUnitPrices = ExecutionUnitPrices <$> genRational <*> genRational
 
-genTxOutDatumHash :: CardanoEra era -> Gen (TxOutDatumHash era)
+genTxOutDatumHash :: CardanoEra era -> Gen (TxOutDatum CtxTx era)
 genTxOutDatumHash era = case era of
-    ByronEra -> pure TxOutDatumHashNone
-    ShelleyEra -> pure TxOutDatumHashNone
-    AllegraEra -> pure TxOutDatumHashNone
-    MaryEra -> pure TxOutDatumHashNone
-    AlonzoEra -> Gen.choice
-      [ pure TxOutDatumHashNone
-      , TxOutDatumHash ScriptDataInAlonzoEra <$> genHashScriptData
-      ]
+    ByronEra   -> pure TxOutDatumNone
+    ShelleyEra -> pure TxOutDatumNone
+    AllegraEra -> pure TxOutDatumNone
+    MaryEra    -> pure TxOutDatumNone
+    AlonzoEra  -> Gen.choice
+                    [ pure TxOutDatumNone
+                    , TxOutDatumHash ScriptDataInAlonzoEra <$> genHashScriptData
+                    , TxOutDatum     ScriptDataInAlonzoEra <$> genScriptData
+                    ]
 
 mkDummyHash :: forall h a. CRYPTO.HashAlgorithm h => Int -> CRYPTO.Hash h a
 mkDummyHash = coerce . CRYPTO.hashWithSerialiser @h CBOR.toCBOR

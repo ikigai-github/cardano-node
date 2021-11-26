@@ -8,7 +8,8 @@ import qualified Data.List.NonEmpty as NonEmpty
 import           Data.Word
 import           Data.Dependent.Sum ((==>) )
 
-import           Cardano.Api (AnyCardanoEra(..), CardanoEra(..), Quantity(..), SlotNo(..), quantityToLovelace )
+import           Cardano.Api (AnyCardanoEra(..), CardanoEra(..), Quantity(..), ScriptData(..), SlotNo(..), quantityToLovelace )
+import           Cardano.Api.Shelley (ExecutionUnits(..))
 import           Cardano.Node.Types
 import           Ouroboros.Network.NodeToClient (withIOManager)
 
@@ -18,6 +19,7 @@ import           Cardano.Benchmarking.Script.Aeson
 import           Cardano.Benchmarking.Script.Env
 import           Cardano.Benchmarking.Script.Store
 import           Cardano.Benchmarking.Script.Setters
+import           Cardano.Benchmarking.Script.Types
 
 runTestScript :: IO (Either Error (), Env, ())
 runTestScript = withIOManager $ runActionM (forM_ testScript action)
@@ -54,12 +56,14 @@ testScript =
   , AsyncBenchmark threadName txList (TPSRate 10)
   , WaitForEra $ AnyCardanoEra ByronEra
   , CancelBenchmark threadName
-  , ImportGenesisFund passPartout passPartout
-  , CreateChange (quantityToLovelace 10000) 1000
-  , RunBenchmark (ThreadName "walletThread") (NumberOfTxs 1000) (TPSRate 10)
+  , ImportGenesisFund DiscardTX passPartout passPartout
+  , CreateChange LocalSocket PayToAddr (quantityToLovelace 10000) 1000
+  , RunBenchmark (DumpToFile "/tmp/tx-list.txt") SpendOutput (ThreadName "walletThread") (NumberOfTxs 1000) (TPSRate 10)
+  , RunBenchmark (DumpToFile "/tmp/tx-list.txt") scriptDef (ThreadName "walletThread") (NumberOfTxs 1000) (TPSRate 10)  
   , Reserved []
   ]
  where
+  scriptDef = SpendScript "filePath" (ExecutionUnits 70000000 70000000) (ScriptDataNumber 3) (ScriptDataNumber 6)
   passPartout = KeyName "pass-partout"
   genFund = FundName "genFund"
   outputFunds = map FundName ["fund1", "fund2", "fund3", "fund4"]

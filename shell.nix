@@ -1,4 +1,4 @@
-let defaultCustomConfig = import ./custom-config defaultCustomConfig;
+let defaultCustomConfig = import ./nix/custom-config.nix defaultCustomConfig;
 # This file is used by nix-shell.
 # It just takes the shell attribute from default.nix.
 in
@@ -57,10 +57,9 @@ let
   #  you have to remove all `source-repository-package` entries from cabal.project
   #  after entering nix-shell for cabal to use nix provided dependencies for them.
   mkCluster =
-    { useCabalRun }:
+    { useCabalRun, profileName ? localCluster.profileName }:
     callPackage ./nix/supervisord-cluster
-      { inherit useCabalRun;
-        inherit (localCluster) profileName;
+      { inherit profileName useCabalRun;
         workbench = pkgs.callPackage ./nix/workbench { inherit useCabalRun; };
       };
 
@@ -80,8 +79,7 @@ let
     tools = {
       haskell-language-server = {
         version = "latest";
-        index-state = "2021-06-22T00:00:00Z";
-        # inherit (cardanoNodeProject) index-state;
+        inherit (cardanoNodeProject) index-state;
       };
     };
 
@@ -156,7 +154,7 @@ let
   };
 
   devops =
-    let cluster = mkCluster { useCabalRun = false; };
+    let cluster = mkCluster { useCabalRun = false; profileName = "devops-alzo"; };
     in cardanoNodeProject.shellFor {
     name = "devops-shell";
 

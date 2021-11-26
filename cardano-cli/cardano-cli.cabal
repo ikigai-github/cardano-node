@@ -1,7 +1,7 @@
 cabal-version: 3.0
 
 name:                   cardano-cli
-version:                1.31.0
+version:                1.30.0
 description:            The Cardano command-line interface.
 author:                 IOHK
 maintainer:             operations@iohk.io
@@ -115,6 +115,7 @@ library
                       , cardano-ledger-core
                       , cardano-ledger-shelley-ma
                       , cardano-prelude
+                      , cardano-protocol-tpraos
                       , cardano-slotting
                       , contra-tracer
                       , cborg >= 0.2.4 && < 0.3
@@ -134,17 +135,15 @@ library
                       , parsec
                       , plutus-ledger-api
                       , prettyprinter
-                      , shelley-spec-ledger
+                      , cardano-ledger-shelley
                       , small-steps
                       , split
-                      , stm
                       , strict-containers
                       , text
                       , time
                       , transformers
                       , transformers-except
                       , utf8-string
-                      , unordered-containers
                       , vector
                       , yaml
 
@@ -177,13 +176,17 @@ test-suite cardano-cli-test
                       , cardano-node
                       , cardano-prelude
                       , cardano-slotting
+                      , directory
                       , exceptions
+                      , filepath
                       , hedgehog
                       , hedgehog-extras
                       , parsec
                       , text
+                      , transformers
 
-  other-modules:        Test.Cli.FilePermissions
+  other-modules:        Test.Config.Mainnet
+                        Test.Cli.FilePermissions
                         Test.Cli.ITN
                         Test.Cli.MultiAssetParsing
                         Test.Cli.Pioneers.Exercise1

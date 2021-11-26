@@ -23,8 +23,6 @@ import qualified Data.Text.Encoding as Text
 
 import           Cardano.Api.Orphans ()
 
-import           Cardano.Crypto.Hash.Class as Crypto
-
 import           Ouroboros.Consensus.Byron.Ledger.Block (ByronHash (..))
 import           Ouroboros.Consensus.HardFork.Combinator (OneEraHash (..))
 import           Ouroboros.Consensus.Shelley.Eras (StandardCrypto)
@@ -32,16 +30,17 @@ import           Ouroboros.Consensus.Shelley.Ledger.Block (ShelleyHash (..))
 import           Ouroboros.Network.Block (BlockNo (..), HeaderHash, Tip (..))
 
 import           Cardano.Ledger.AuxiliaryData (AuxiliaryDataHash (..))
+import qualified Cardano.Ledger.Crypto as CC (Crypto)
+import           Cardano.Protocol.TPraos (PoolDistr (..))
+import           Cardano.Protocol.TPraos.BHeader (HashHeader (..))
 
 import qualified Cardano.Ledger.Credential as Ledger
-import qualified Shelley.Spec.Ledger.API.Protocol as Ledger
-import           Shelley.Spec.Ledger.BlockChain (HashHeader (..))
-import qualified Shelley.Spec.Ledger.Delegation.Certificates as Ledger
-import qualified Shelley.Spec.Ledger.EpochBoundary as Ledger
-import qualified Shelley.Spec.Ledger.Rewards as Ledger
-import qualified Shelley.Spec.Ledger.STS.Prtcl as Ledger
-import qualified Shelley.Spec.Ledger.STS.Tickn as Ledger
-import           Shelley.Spec.Ledger.TxBody (TxId (..))
+import qualified Cardano.Ledger.Shelley.API.Protocol as Ledger
+import qualified Cardano.Ledger.Shelley.EpochBoundary as Ledger
+import qualified Cardano.Ledger.Shelley.Rewards as Ledger
+import qualified Cardano.Protocol.TPraos.Rules.Prtcl as Ledger
+import qualified Cardano.Ledger.Shelley.Rules.Tickn as Ledger
+import           Cardano.Ledger.Shelley.TxBody (TxId (..))
 
 import qualified Cardano.Ledger.Mary.Value as Ledger.Mary
 
@@ -72,14 +71,14 @@ deriving newtype instance ToJSON BlockNo
 -- Simple newtype wrappers JSON conversion
 --
 
-deriving newtype instance ToJSON (TxId era)
+deriving newtype instance CC.Crypto crypto => ToJSON (TxId crypto)
 
-deriving newtype instance ToJSON (ShelleyHash era)
-deriving newtype instance ToJSON (HashHeader era)
+deriving newtype instance CC.Crypto crypto => ToJSON (ShelleyHash crypto)
+deriving newtype instance CC.Crypto crypto => ToJSON (HashHeader crypto)
 
 deriving newtype instance ToJSON (AuxiliaryDataHash StandardCrypto)
 deriving newtype instance ToJSON Ledger.LogWeight
-deriving newtype instance ToJSON (Ledger.PoolDistr StandardCrypto)
+deriving newtype instance ToJSON (PoolDistr StandardCrypto)
 
 deriving newtype instance ToJSON (Ledger.Stake StandardCrypto)
 

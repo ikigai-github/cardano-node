@@ -62,7 +62,7 @@ import           Ouroboros.Consensus.HeaderValidation (OtherHeaderEnvelopeError)
 import           Ouroboros.Consensus.Ledger.Abstract (LedgerErr, LedgerState)
 import           Ouroboros.Consensus.Ledger.Extended (ledgerState)
 import           Ouroboros.Consensus.Ledger.Inspect (InspectLedger, LedgerEvent)
-import           Ouroboros.Consensus.Ledger.Query (Query)
+import           Ouroboros.Consensus.Ledger.Query (BlockQuery)
 import           Ouroboros.Consensus.Ledger.SupportsMempool (ApplyTxErr, GenTx, GenTxId, HasTxs,
                    LedgerSupportsMempool)
 import           Ouroboros.Consensus.Ledger.SupportsProtocol (LedgerSupportsProtocol)
@@ -107,7 +107,7 @@ import qualified Cardano.Node.STM as STM
 import qualified Control.Concurrent.STM as STM
 import qualified Ouroboros.Network.Diffusion as ND
 
-import           Shelley.Spec.Ledger.OCert (KESPeriod (..))
+import           Cardano.Protocol.TPraos.OCert (KESPeriod (..))
 
 {- HLINT ignore "Redundant bracket" -}
 {- HLINT ignore "Use record patterns" -}
@@ -514,7 +514,6 @@ mkConsensusTracers
      , Consensus.RunNode blk
      , HasKESMetricsData blk
      , HasKESInfo blk
-     , Show (Header blk)
      )
   => Maybe EKGDirect
   -> TraceSelection
@@ -539,7 +538,8 @@ mkConsensusTracers mbEKGDirect trSel verb tr nodeKern fStats = do
     { Consensus.chainSyncClientTracer = tracerOnOff (traceChainSyncClient trSel) verb "ChainSyncClient" tr
     , Consensus.chainSyncServerHeaderTracer =
       Tracer $ \ev -> do
-        traceWith (annotateSeverity . toLogObject' verb $ appendName "ChainSyncHeaderServer" tr) ev
+        traceWith (annotateSeverity . toLogObject' verb $ appendName "ChainSyncHeaderServer"
+                    (tracerOnOff' (traceChainSyncHeaderServer trSel) tr)) ev
         traceServedCount mbEKGDirect ev
     , Consensus.chainSyncServerBlockTracer = tracerOnOff (traceChainSyncBlockServer trSel) verb "ChainSyncBlockServer" tr
     , Consensus.blockFetchDecisionTracer = tracerOnOff' (traceBlockFetchDecisions trSel) $
@@ -964,12 +964,8 @@ forgeStateInfoTracer p _ts tracer = Tracer $ \ev -> do
 --------------------------------------------------------------------------------
 
 nodeToClientTracers'
-  :: ( StandardHash blk
-     , Show (ApplyTxErr blk)
-     , Show (GenTx blk)
-     , Show localPeer
-     , ToObject localPeer
-     , ShowQuery (Query blk)
+  :: ( ToObject localPeer
+     , ShowQuery (BlockQuery blk)
      )
   => TraceSelection
   -> TracingVerbosity
@@ -993,8 +989,6 @@ nodeToNodeTracers'
   :: ( Consensus.RunNode blk
      , ConvertTxId blk
      , HasTxs blk
-     , Show blk
-     , Show (Header blk)
      , Show peer
      , ToObject peer
      )
