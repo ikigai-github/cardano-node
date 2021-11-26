@@ -28,10 +28,10 @@ import qualified Hedgehog.Range as Range
 
 genMetadata :: Gen (Metadata era)
 genMetadata = do
-  numberOfIndicies <- Gen.integral (Range.linear 1 15)
-  let indexes = map (\i -> fromIntegral i :: Word64) [1..numberOfIndicies]
-  mDatums <- Gen.list (Range.singleton numberOfIndicies) genMetadatum
-  return . Metadata . Map.fromList $ zip indexes mDatums
+  numberOfIndices <- Gen.integral (Range.linear 1 15)
+  let indices = map (\i -> fromIntegral i :: Word64) [1..numberOfIndices]
+  mData <- Gen.list (Range.singleton numberOfIndices) genMetadatum
+  return . Metadata . Map.fromList $ zip indices mData
 
 genMetadatum :: Gen Metadatum
 genMetadatum = do
@@ -76,8 +76,8 @@ genPrices = do
 
 genExUnits :: Gen Alonzo.ExUnits
 genExUnits = do
-  exUnitsMem' <- Gen.word64 (Range.linear 0 10)
-  exUnitsSteps' <- Gen.word64 (Range.linear 0 10)
+  exUnitsMem' <- Gen.integral (Range.linear 0 10)
+  exUnitsSteps' <- Gen.integral (Range.linear 0 10)
   return Alonzo.ExUnits
     { Alonzo.exUnitsMem = exUnitsMem'
     , Alonzo.exUnitsSteps = exUnitsSteps'

@@ -87,7 +87,7 @@ hprop_plutus_script_context_equality = H.integration . H.runFinallies . H.worksp
   scriptDummyRedeemer <- H.note $ work </> "script-context-dummy.redeemer"
   scriptContextRedeemer <- H.note $ work </> "script-context.redeemer"
 
-  plutusContextEquivalenceScript <- H.note $ base </> "scripts/plutus/scripts/context-equivalance-test.plutus"
+  plutusContextEqualityScript <- H.note $ base </> "scripts/plutus/scripts/context-equivalance-test.plutus"
 
   H.noteEachM_ . H.listDirectory $ base
   H.noteEachM_ . H.listDirectory $ base </> "scripts"
@@ -115,7 +115,7 @@ hprop_plutus_script_context_equality = H.integration . H.runFinallies . H.worksp
 
   plutusScriptAddr <- H.execCli
     [ "address", "build"
-    , "--payment-script-file", plutusContextEquivalenceScript
+    , "--payment-script-file", plutusContextEqualityScript
     , "--testnet-magic", show @Int testnetMagic
     ]
 
@@ -228,7 +228,7 @@ hprop_plutus_script_context_equality = H.integration . H.runFinallies . H.worksp
     , "--tx-in", T.unpack plutusUtxoTxIn
     , "--tx-in-collateral", T.unpack txinCollateral
     , "--tx-out", dummyaddress <> "+" <> show @Integer 10000000
-    , "--tx-in-script-file", plutusContextEquivalenceScript
+    , "--tx-in-script-file", plutusContextEqualityScript
     , "--tx-in-datum-file", typedDatumFile
     , "--tx-in-redeemer-file", scriptDummyRedeemer
     , "--protocol-params-file", work </> "pparams.json"
@@ -266,7 +266,7 @@ hprop_plutus_script_context_equality = H.integration . H.runFinallies . H.worksp
     , "--tx-in", T.unpack plutusUtxoTxIn
     , "--tx-in-collateral", T.unpack txinCollateral
     , "--tx-out", dummyaddress <> "+" <> show @Integer 10000000
-    , "--tx-in-script-file", plutusContextEquivalenceScript
+    , "--tx-in-script-file", plutusContextEqualityScript
     , "--tx-in-datum-file", typedDatumFile
     , "--tx-in-redeemer-file", scriptContextRedeemer
     , "--protocol-params-file", work </> "pparams.json"

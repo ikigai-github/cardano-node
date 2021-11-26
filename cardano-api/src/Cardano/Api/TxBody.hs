@@ -19,7 +19,7 @@
 -- | Transaction bodies
 --
 module Cardano.Api.TxBody (
-
+    parseTxId,
     -- * Transaction bodies
     TxBody(.., TxBody),
     makeTransactionBody,
@@ -56,6 +56,7 @@ module Cardano.Api.TxBody (
     prettyRenderTxOut,
     txOutValueToLovelace,
     txOutValueToValue,
+    parseHashScriptData,
     TxOutInAnyEra(..),
     txOutInAnyEra,
 
@@ -139,27 +140,36 @@ module Cardano.Api.TxBody (
 import           Prelude
 
 import           Control.Monad (guard)
-import           Data.Aeson (object, (.=))
+import           Data.Aeson (object, withObject, withText, (.:), (.:?), (.=))
 import qualified Data.Aeson as Aeson
 import           Data.Aeson.Types (ToJSONKey (..), toJSONKeyText)
+import qualified Data.Aeson.Types as Aeson
 import           Data.Bifunctor (first)
 import           Data.ByteString (ByteString)
+import qualified Data.ByteString.Char8 as BSC
 import qualified Data.ByteString.Lazy as LBS
-import           Data.Foldable (toList)
+import           Data.Foldable (for_, toList)
 import           Data.Function (on)
+import qualified Data.HashMap.Strict as HMS
 import           Data.List (intercalate, sortBy)
 import qualified Data.List.NonEmpty as NonEmpty
 import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import           Data.Maybe (fromMaybe, maybeToList)
+import           Data.Scientific (toBoundedInteger)
 import qualified Data.Sequence.Strict as Seq
 import           Data.Set (Set)
 import qualified Data.Set as Set
-import           Data.String (IsString)
+import           Data.String
 import           Data.Text (Text)
 import qualified Data.Text as Text
-import           Data.Word (Word64)
+import           Data.Type.Equality (TestEquality (..), (:~:) (Refl))
+import           Data.Word (Word32, Word64)
 import           GHC.Generics
+import qualified Text.Parsec as Parsec
+import qualified Text.Parsec.Language as Parsec
+import qualified Text.Parsec.String as Parsec
+import qualified Text.Parsec.Token as Parsec
 
 import           Cardano.Binary (Annotated (..), reAnnotate, recoverBytes)
 import qualified Cardano.Binary as CBOR
@@ -186,7 +196,7 @@ import qualified Cardano.Ledger.Shelley.Genesis as Shelley
 import qualified Cardano.Ledger.Shelley.Metadata as Shelley
 import qualified Cardano.Ledger.Shelley.Tx as Shelley
 import qualified Cardano.Ledger.Shelley.TxBody as Shelley
-import qualified Cardano.Ledger.Shelley.UTxO as Shelley
+import qualified Cardano.Ledger.TxIn as Ledger
 
 import qualified Cardano.Ledger.Mary.Value as Mary
 import qualified Cardano.Ledger.ShelleyMA.AuxiliaryData as Allegra
@@ -226,6 +236,7 @@ import           Cardano.Api.SerialiseUsing
 import           Cardano.Api.TxMetadata
 import           Cardano.Api.Utils
 import           Cardano.Api.Value
+import           Cardano.Api.ValueParser
 import           Cardano.Ledger.Crypto (StandardCrypto)
 
 {- HLINT ignore "Redundant flip" -}
@@ -327,12 +338,12 @@ toByronTxId :: TxId -> Byron.TxId
 toByronTxId (TxId h) =
     Byron.unsafeHashFromBytes (Crypto.hashToBytes h)
 
-toShelleyTxId :: TxId -> Shelley.TxId StandardCrypto
+toShelleyTxId :: TxId -> Ledger.TxId StandardCrypto
 toShelleyTxId (TxId h) =
-    Shelley.TxId (SafeHash.unsafeMakeSafeHash (Crypto.castHash h))
+    Ledger.TxId (SafeHash.unsafeMakeSafeHash (Crypto.castHash h))
 
-fromShelleyTxId :: Shelley.TxId StandardCrypto -> TxId
-fromShelleyTxId (Shelley.TxId h) =
+fromShelleyTxId :: Ledger.TxId StandardCrypto -> TxId
+fromShelleyTxId (Ledger.TxId h) =
     TxId (Crypto.castHash (SafeHash.extractHash h))
 
 -- | Calculate the transaction identifier for a 'TxBody'.
@@ -370,8 +381,8 @@ getTxIdShelley
 getTxIdShelley _ tx =
     TxId
   . Crypto.castHash
-  . (\(Shelley.TxId txhash) -> SafeHash.extractHash txhash)
-  $ Shelley.txid tx
+  . (\(Ledger.TxId txhash) -> SafeHash.extractHash txhash)
+  $ Ledger.txid tx
 
 
 -- ----------------------------------------------------------------------------
@@ -386,6 +397,26 @@ instance ToJSON TxIn where
 
 instance ToJSONKey TxIn where
   toJSONKey = toJSONKeyText renderTxIn
+
+instance FromJSON TxIn where
+  parseJSON = withText "TxIn" $ \txinStr -> runParsecParser parseTxIn txinStr
+
+parseTxId :: Parsec.Parser TxId
+parseTxId = do
+  str <- Parsec.many1 Parsec.hexDigit Parsec.<?> "transaction id (hexadecimal)"
+  case deserialiseFromRawBytesHex AsTxId (BSC.pack str) of
+    Just addr -> return addr
+    Nothing -> fail $ "Incorrect transaction id format:: " ++ show str
+
+parseTxIn :: Parsec.Parser TxIn
+parseTxIn = TxIn <$> parseTxId <*> (Parsec.char '#' *> parseTxIx)
+
+parseTxIx :: Parsec.Parser TxIx
+parseTxIx = TxIx . fromIntegral <$> decimal
+
+decimal :: Parsec.Parser Integer
+Parsec.TokenParser { Parsec.decimal = decimal } = Parsec.haskell
+
 
 renderTxIn :: TxIn -> Text
 renderTxIn (TxIn txId (TxIx ix)) =
@@ -409,12 +440,12 @@ toByronTxIn :: TxIn -> Byron.TxIn
 toByronTxIn (TxIn txid (TxIx txix)) =
     Byron.TxInUtxo (toByronTxId txid) (fromIntegral txix)
 
-toShelleyTxIn :: TxIn -> Shelley.TxIn StandardCrypto
+toShelleyTxIn :: TxIn -> Ledger.TxIn StandardCrypto
 toShelleyTxIn (TxIn txid (TxIx txix)) =
-    Shelley.TxIn (toShelleyTxId txid) (fromIntegral txix)
+    Ledger.TxIn (toShelleyTxId txid) (fromIntegral txix)
 
-fromShelleyTxIn :: Shelley.TxIn StandardCrypto -> TxIn
-fromShelleyTxIn (Shelley.TxIn txid txix) =
+fromShelleyTxIn :: Ledger.TxIn StandardCrypto -> TxIn
+fromShelleyTxIn (Ledger.TxIn txid txix) =
     TxIn (fromShelleyTxId txid) (TxIx (fromIntegral txix))
 
 
@@ -440,6 +471,12 @@ data TxOutInAnyEra where
                    -> TxOutInAnyEra
 
 deriving instance Show TxOutInAnyEra
+
+instance Eq TxOutInAnyEra where
+  TxOutInAnyEra era1 out1 == TxOutInAnyEra era2 out2 =
+    case testEquality era1 era2 of
+      Just Refl -> out1 == out2
+      Nothing   -> False
 
 -- | Convenience constructor for 'TxOutInAnyEra'
 txOutInAnyEra :: IsCardanoEra era => TxOut CtxTx era -> TxOutInAnyEra
@@ -470,6 +507,53 @@ instance IsCardanoEra era => ToJSON (TxOut ctx era) where
            , "datum"     .= scriptDataToJson ScriptDataJsonDetailedSchema d
            ]
 
+instance (IsShelleyBasedEra era, IsCardanoEra era)
+  => FromJSON (TxOut CtxTx era) where
+      parseJSON = withObject "TxOut" $ \o -> do
+        addr <- o .: "address"
+        val <- o .: "value"
+        case scriptDataSupportedInEra cardanoEra of
+          Just supported -> do
+            mData <- o .:? "datum"
+            mDatumHash <- o .:? "datumhash"
+            case (mData, mDatumHash) of
+              (Nothing, Nothing) ->
+                pure $ TxOut addr val TxOutDatumNone
+              (Nothing, Just (Aeson.String dHashTxt))  -> do
+                dh <- runParsecParser parseHashScriptData dHashTxt
+                pure $ TxOut addr val $ TxOutDatumHash supported dh
+              (Just sDataVal, Just (Aeson.String dHashTxt)) ->
+                case scriptDataFromJson ScriptDataJsonDetailedSchema sDataVal of
+                  Left err ->
+                    fail $ "Error parsing TxOut JSON: " <> displayError err
+                  Right sData -> do
+                    dHash <- runParsecParser parseHashScriptData dHashTxt
+                    pure . TxOut addr val $ TxOutDatum' supported dHash sData
+              (mDatVal, wrongDatumHashFormat) ->
+                fail $ "Error parsing TxOut's datum hash/data: " <>
+                       "\nData value:" <> show mDatVal <>
+                       "\nDatumHash: " <> show wrongDatumHashFormat
+
+          Nothing -> pure $ TxOut addr val TxOutDatumNone
+
+instance (IsShelleyBasedEra era, IsCardanoEra era)
+  => FromJSON (TxOut CtxUTxO era) where
+      parseJSON = withObject "TxOut" $ \o -> do
+        addr <- o .: "address"
+        val <- o .: "value"
+        case scriptDataSupportedInEra cardanoEra of
+          Just supported -> do
+            mDatumHash <- o .:? "datumhash"
+            case mDatumHash of
+              Nothing ->
+                pure $ TxOut addr val TxOutDatumNone
+              Just (Aeson.String dHashTxt)  -> do
+                dh <- runParsecParser parseHashScriptData dHashTxt
+                pure $ TxOut addr val $ TxOutDatumHash supported dh
+              Just wrongDatumHashFormat ->
+                fail $ "Error parsing TxOut's datum hash: " <>
+                       "\nDatumHash: " <> show wrongDatumHashFormat
+          Nothing -> pure $ TxOut addr val TxOutDatumNone
 
 fromByronTxOut :: Byron.TxOut -> TxOut ctx ByronEra
 fromByronTxOut (Byron.TxOut addr value) =
@@ -970,6 +1054,46 @@ instance ToJSON (TxOutValue era) where
   toJSON (TxOutAdaOnly _ ll) = toJSON ll
   toJSON (TxOutValue _ val) = toJSON val
 
+instance IsCardanoEra era => FromJSON (TxOutValue era) where
+  parseJSON = withObject "TxOutValue" $ \o -> do
+    case multiAssetSupportedInEra cardanoEra of
+      Left onlyAda -> do
+        ll <- o .: "lovelace"
+        pure $ TxOutAdaOnly onlyAda $ selectLovelace ll
+      Right maSupported -> do
+        let l = HMS.toList o
+        vals <- mapM decodeAssetId l
+        pure $ TxOutValue maSupported $ mconcat vals
+    where
+     decodeAssetId :: (Text, Aeson.Value) -> Aeson.Parser Value
+     decodeAssetId (polid, Aeson.Object assetNameHm) = do
+       let polId = fromString $ Text.unpack polid
+       aNameQuantity <- decodeAssets assetNameHm
+       pure . valueFromList
+         $ map (first $ AssetId polId) aNameQuantity
+
+     decodeAssetId ("lovelace", Aeson.Number sci) =
+       case toBoundedInteger sci of
+         Just (ll :: Word64) ->
+           pure $ valueFromList [(AdaAssetId, Quantity $ toInteger ll)]
+         Nothing ->
+           fail $ "Expected a Bounded number but got: " <> show sci
+     decodeAssetId wrong = fail $ "Expected a policy id and a JSON object but got: " <> show wrong
+
+     decodeAssets :: Aeson.Object -> Aeson.Parser [(AssetName, Quantity)]
+     decodeAssets assetNameHm =
+       let l = HMS.toList assetNameHm
+       in mapM (\(aName, q) -> (,) <$> parseAssetName aName <*> decodeQuantity q) l
+
+     parseAssetName :: Text -> Aeson.Parser AssetName
+     parseAssetName aName = runParsecParser assetName aName
+
+     decodeQuantity :: Aeson.Value -> Aeson.Parser Quantity
+     decodeQuantity (Aeson.Number sci) =
+       case toBoundedInteger sci of
+         Just (ll :: Word64) -> return . Quantity $ toInteger ll
+         Nothing -> fail $ "Expected a Bounded number but got: " <> show sci
+     decodeQuantity wrong = fail $ "Expected aeson Number but got: " <> show wrong
 
 lovelaceToTxOutValue :: IsCardanoEra era => Lovelace -> TxOutValue era
 lovelaceToTxOutValue l =
@@ -1031,6 +1155,13 @@ pattern TxOutDatum s d  <- TxOutDatum' s _ d
 {-# COMPLETE TxOutDatumNone, TxOutDatumHash, TxOutDatum' #-}
 {-# COMPLETE TxOutDatumNone, TxOutDatumHash, TxOutDatum  #-}
 
+
+parseHashScriptData :: Parsec.Parser (Hash ScriptData)
+parseHashScriptData = do
+  str <- Parsec.many1 Parsec.hexDigit Parsec.<?> "script data hash"
+  case deserialiseFromRawBytesHex (AsHash AsScriptData) (BSC.pack str) of
+    Just sdh -> return sdh
+    Nothing  -> fail $ "Invalid datum hash: " ++ show str
 
 -- ----------------------------------------------------------------------------
 -- Transaction fees
@@ -1214,6 +1345,7 @@ data TxBodyContent build era =
        txMintValue      :: TxMintValue    build era,
        txScriptValidity :: TxScriptValidity era
      }
+     deriving (Eq, Show)
 
 
 -- ----------------------------------------------------------------------------
@@ -1587,7 +1719,8 @@ data TxBodyError =
      | TxBodyMetadataError [(Word64, TxMetadataRangeError)]
      | TxBodyMintAdaError
      | TxBodyMissingProtocolParams
-     deriving Show
+     | TxBodyInIxOverflow TxIn
+     deriving (Eq, Show)
 
 instance Error TxBodyError where
     displayError TxBodyEmptyTxIns  = "Transaction body has no inputs"
@@ -1612,6 +1745,10 @@ instance Error TxBodyError where
     displayError TxBodyMissingProtocolParams =
       "Transaction uses Plutus scripts but does not provide the protocol " ++
       "parameters to hash"
+    displayError (TxBodyInIxOverflow txin) =
+      "Transaction input index is too big, " ++
+      "acceptable value is up to 2^32-1, " ++
+      "in input " ++ show txin
 
 
 makeTransactionBody :: forall era.
@@ -1672,7 +1809,7 @@ fromLedgerTxIns era body =
   where
     inputs :: ShelleyBasedEra era
            -> Ledger.TxBody (ShelleyLedgerEra era)
-           -> Set (Shelley.TxIn StandardCrypto)
+           -> Set (Ledger.TxIn StandardCrypto)
     inputs ShelleyBasedEraShelley = Shelley._inputs
     inputs ShelleyBasedEraAllegra = Allegra.inputs'
     inputs ShelleyBasedEraMary    = Mary.inputs'
@@ -1687,17 +1824,15 @@ fromLedgerTxInsCollateral
 fromLedgerTxInsCollateral era body =
     case collateralSupportedInEra (shelleyBasedToCardanoEra era) of
       Nothing        -> TxInsCollateralNone
-      Just supported -> TxInsCollateral supported
-                          [ fromShelleyTxIn input
-                          | input <- Set.toList (collateral era body) ]
+      Just supported ->
+        TxInsCollateral supported $ map fromShelleyTxIn collateral
   where
-    collateral :: ShelleyBasedEra era
-               -> Ledger.TxBody (ShelleyLedgerEra era)
-               -> Set (Shelley.TxIn StandardCrypto)
-    collateral ShelleyBasedEraShelley = const Set.empty
-    collateral ShelleyBasedEraAllegra = const Set.empty
-    collateral ShelleyBasedEraMary    = const Set.empty
-    collateral ShelleyBasedEraAlonzo  = Alonzo.collateral'
+    collateral :: [Ledger.TxIn StandardCrypto]
+    collateral = case era of
+      ShelleyBasedEraShelley -> []
+      ShelleyBasedEraAllegra -> []
+      ShelleyBasedEraMary    -> []
+      ShelleyBasedEraAlonzo  -> toList $ Alonzo.collateral' body
 
 
 fromLedgerTxOuts
@@ -1891,11 +2026,14 @@ fromLedgerTxExtraKeyWitnesses sbe body =
     ShelleyBasedEraShelley -> TxExtraKeyWitnessesNone
     ShelleyBasedEraAllegra -> TxExtraKeyWitnessesNone
     ShelleyBasedEraMary    -> TxExtraKeyWitnessesNone
-    ShelleyBasedEraAlonzo  -> TxExtraKeyWitnesses
+    ShelleyBasedEraAlonzo
+      | Set.null keyhashes -> TxExtraKeyWitnessesNone
+      | otherwise          -> TxExtraKeyWitnesses
                                 ExtraKeyWitnessesInAlonzoEra
                                 [ PaymentKeyHash (Shelley.coerceKeyRole keyhash)
-                                | let keyhashes = Alonzo.reqSignerHashes body
-                                , keyhash <- Set.toList keyhashes ]
+                                | keyhash <- Set.toList keyhashes ]
+      where
+        keyhashes = Alonzo.reqSignerHashes body
 
 fromLedgerTxWithdrawals
   :: ShelleyBasedEra era
@@ -2040,8 +2178,10 @@ fromLedgerTxMintValue era body =
 makeByronTransactionBody :: TxBodyContent BuildTx ByronEra
                          -> Either TxBodyError (TxBody ByronEra)
 makeByronTransactionBody TxBodyContent { txIns, txOuts } = do
-    ins'  <- NonEmpty.nonEmpty txIns      ?! TxBodyEmptyTxIns
-    let ins'' = NonEmpty.map (toByronTxIn . fst) ins'
+    ins' <- NonEmpty.nonEmpty (map fst txIns) ?! TxBodyEmptyTxIns
+    for_ ins' $ \txin@(TxIn _ (TxIx txix)) ->
+      guard (txix <= maxByronTxInIx) ?! TxBodyInIxOverflow txin
+    let ins'' = fmap toByronTxIn ins'
 
     outs'  <- NonEmpty.nonEmpty txOuts    ?! TxBodyEmptyTxOuts
     outs'' <- traverse
@@ -2054,6 +2194,9 @@ makeByronTransactionBody TxBodyContent { txIns, txOuts } = do
             (Byron.UnsafeTx ins'' outs'' (Byron.mkAttributes ()))
             ()
   where
+    maxByronTxInIx :: Word
+    maxByronTxInIx = fromIntegral (maxBound :: Word32)
+
     classifyRangeError :: TxOut CtxTx ByronEra -> TxBodyError
     classifyRangeError
       txout@(TxOut (AddressInEra ByronAddressInAnyEra ByronAddress{})
@@ -2620,12 +2763,17 @@ mapTxScriptWitnesses f txbodycontent@TxBodyContent {
     mapScriptWitnessesWithdrawals  TxWithdrawalsNone = TxWithdrawalsNone
     mapScriptWitnessesWithdrawals (TxWithdrawals supported withdrawals) =
       TxWithdrawals supported
-        [ (addr, withdrawal, BuildTxWith (ScriptWitness ctx witness'))
+        [ (addr, withdrawal, BuildTxWith (adjustWitness (f (ScriptWitnessIndexWithdrawal ix)) wit))
           -- The withdrawals are indexed in the map order by stake credential
-        | (ix, (addr, withdrawal, BuildTxWith (ScriptWitness ctx witness)))
-             <- zip [0..] (orderStakeAddrs withdrawals)
-        , let witness' = f (ScriptWitnessIndexWithdrawal ix) witness
+        | (ix, (addr, withdrawal, BuildTxWith wit)) <- zip [0..] (orderStakeAddrs withdrawals)
         ]
+      where
+        adjustWitness
+          :: (ScriptWitness witctx era -> ScriptWitness witctx era)
+          -> Witness witctx era
+          -> Witness witctx era
+        adjustWitness _ (KeyWitness ctx) = KeyWitness ctx
+        adjustWitness g (ScriptWitness ctx witness') = ScriptWitness ctx (g witness')
 
     mapScriptWitnessesCertificates
       :: TxCertificates BuildTx era
@@ -2734,7 +2882,7 @@ collectTxBodyScriptWitnesses TxBodyContent {
         ]
 
 -- This relies on the TxId Ord instance being consistent with the
--- Shelley.TxId Ord instance via the toShelleyTxId conversion
+-- Ledger.TxId Ord instance via the toShelleyTxId conversion
 -- This is checked by prop_ord_distributive_TxId
 orderTxIns :: [(TxIn, v)] -> [(TxIn, v)]
 orderTxIns = sortBy (compare `on` fst)

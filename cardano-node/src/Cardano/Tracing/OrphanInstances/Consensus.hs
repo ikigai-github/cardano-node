@@ -686,6 +686,8 @@ instance ( ConvertRawHash blk
                [ "kind" .= String "TraceAddBlockEvent.SwitchedToAFork"
                , "newtip" .= renderPointForVerbosity verb (AF.headPoint new)
                , "chainLengthDelta" .= new `chainLengthΔ` old
+               -- Check that the SwitchedToAFork event was triggered by a proper fork.
+               , "realFork" .= not (AF.withinFragmentBounds (AF.headPoint old) new)
                ]
             ++ [ "headers" .= toJSON (toObject verb `map` addedHdrsNewChain old new)
                | verb == MaximalVerbosity ]
@@ -1011,8 +1013,9 @@ instance (ConvertRawHash blk, LedgerSupportsProtocol blk)
                , "exception" .= String (pack $ show exc) ]
     TraceFoundIntersection _ _ _ ->
       mkObject [ "kind" .= String "ChainSyncClientEvent.TraceFoundIntersection" ]
-    TraceTermination _ ->
-      mkObject [ "kind" .= String "ChainSyncClientEvent.TraceTermination" ]
+    TraceTermination reason ->
+      mkObject [ "kind" .= String "ChainSyncClientEvent.TraceTermination"
+               , "reason" .= String (pack $ show reason) ]
 
 instance ConvertRawHash blk
       => ToObject (TraceChainSyncServerEvent blk) where

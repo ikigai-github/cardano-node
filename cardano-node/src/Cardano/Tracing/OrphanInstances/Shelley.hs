@@ -57,6 +57,7 @@ import qualified Cardano.Ledger.Alonzo.Tx as Alonzo
 import qualified Cardano.Ledger.Alonzo.TxInfo as Alonzo
 import qualified Cardano.Ledger.AuxiliaryData as Core
 import           Cardano.Ledger.BaseTypes (strictMaybeToMaybe)
+import           Cardano.Ledger.Chain
 import qualified Cardano.Ledger.Core as Core
 import qualified Cardano.Ledger.Core as Ledger
 import qualified Cardano.Ledger.Crypto as Core
@@ -67,13 +68,13 @@ import qualified Cardano.Ledger.ShelleyMA.Timelocks as MA
 import           Cardano.Protocol.TPraos.BHeader (LastAppliedBlock, labBlockNo)
 import           Cardano.Protocol.TPraos.Rules.OCert
 import           Cardano.Protocol.TPraos.Rules.Overlay
+import           Cardano.Protocol.TPraos.Rules.Tickn
 import           Cardano.Protocol.TPraos.Rules.Updn
 
 -- TODO: this should be exposed via Cardano.Api
 import           Cardano.Ledger.Shelley.API hiding (ShelleyBasedEra)
 
 import           Cardano.Ledger.Shelley.Rules.Bbody
-import           Cardano.Ledger.Shelley.Rules.Chain
 import           Cardano.Ledger.Shelley.Rules.Deleg
 import           Cardano.Ledger.Shelley.Rules.Delegs
 import           Cardano.Ledger.Shelley.Rules.Delpl
@@ -92,6 +93,7 @@ import           Cardano.Ledger.Shelley.Rules.Tick
 import           Cardano.Ledger.Shelley.Rules.Upec
 import           Cardano.Ledger.Shelley.Rules.Utxo
 import           Cardano.Ledger.Shelley.Rules.Utxow
+
 
 {- HLINT ignore "Use :" -}
 
@@ -211,10 +213,6 @@ instance Core.Crypto crypto => ToObject (ChainTransitionError crypto) where
              ]
 
 instance ( ShelleyBasedEra era
-         , ToObject (PredicateFailure (Core.EraRule "UTXOW" era))
-         , ToObject (PredicateFailure (Core.EraRule "BBODY" era))
-         , ToObject (PredicateFailure (Core.EraRule "TICK" era))
-         , ToObject (PredicateFailure (Core.EraRule "TICKN" era))
          ) => ToObject (ChainPredicateFailure era) where
   toObject _verb (HeaderSizeTooLargeCHAIN hdrSz maxHdrSz) =
     mkObject [ "kind" .= String "HeaderSizeTooLarge"
@@ -237,11 +235,6 @@ instance ( ShelleyBasedEra era
                       \understand the new major protocol version. This node \
                       \must be upgraded before it can continue with the new \
                       \protocol version."
-  toObject verb (BbodyFailure f) = toObject verb f
-  toObject verb (TickFailure  f) = toObject verb f
-  toObject verb (TicknFailure  f) = toObject verb f
-  toObject verb (PrtclFailure f) = toObject verb f
-  toObject verb (PrtclSeqFailure f) = toObject verb f
 
 instance ToObject (PrtlSeqFailure crypto) where
   toObject _verb (WrongSlotIntervalPrtclSeq (SlotNo lastSlot) (SlotNo currSlot)) =
@@ -357,7 +350,8 @@ renderScriptPurpose (Alonzo.Rewarding rwdAcct) =
 renderScriptPurpose (Alonzo.Certifying cert) =
   Aeson.object [ "certifying" .= toJSON (Api.textEnvelopeDefaultDescr $ Api.fromShelleyCertificate cert)]
 
-instance ( ShelleyBasedEra era
+instance ( Ledger.Crypto era ~ StandardCrypto
+         , ShelleyBasedEra era
          , ToObject (PredicateFailure (UTXO era))
          , ToObject (PredicateFailure (Core.EraRule "UTXO" era))
          ) => ToObject (UtxowPredicateFailure era) where
@@ -397,6 +391,10 @@ instance ( ShelleyBasedEra era
              ]
   toObject _verb InvalidMetadata =
     mkObject [ "kind" .= String "InvalidMetadata"
+             ]
+  toObject _verb (ExtraneousScriptWitnessesUTXOW shashes) =
+    mkObject [ "kind" .= String "ExtraneousScriptWitnessesUTXOW"
+             , "scriptHashes" .= Set.map Api.fromShelleyScriptHash shashes
              ]
 
 instance ( ShelleyBasedEra era

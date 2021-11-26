@@ -23,7 +23,6 @@ module Cardano.Api.Fees (
     -- * Script execution units
     evaluateTransactionExecutionUnits,
     ScriptExecutionError(..),
-    TransactionValidityIntervalError(..),
 
     -- * Transaction balance
     evaluateTransactionBalance,
@@ -352,7 +351,7 @@ data ScriptExecutionError =
        -- the whole point of it is to discover how many execution units are
        -- needed).
        --
-     | ScriptErrorEvaluationFailed Plutus.EvaluationError
+     | ScriptErrorEvaluationFailed Plutus.EvaluationError [Text.Text]
 
        -- | The execution units overflowed a 64bit word. Congratulations if
        -- you encounter this error. With the current style of cost model this
@@ -364,6 +363,9 @@ data ScriptExecutionError =
        -- | An attempt was made to spend a key witnessed tx input
        -- with a script witness.
      | ScriptErrorNotPlutusWitnessedTxIn ScriptWitnessIndex
+
+       -- | A cost model was missing for a language which was used.
+     | ScriptErrorMissingCostModel Alonzo.Language
   deriving Show
 
 instance Error ScriptExecutionError where
@@ -379,8 +381,9 @@ instance Error ScriptExecutionError where
       "The Plutus script witness has the wrong datum (according to the UTxO). "
    ++ "The expected datum value has hash " ++ show dh
 
-  displayError (ScriptErrorEvaluationFailed evalErr) =
-      "The Plutus script evaluation failed: " ++ pp evalErr
+  displayError (ScriptErrorEvaluationFailed evalErr logs) =
+      "The Plutus script evaluation failed: " ++ pp evalErr ++
+      "\nScript debugging logs: " <> mconcat (map (\t -> Text.unpack $ t `Text.append` "\n") logs)
     where
       pp :: PP.Pretty p => p -> String
       pp = PP.renderString
@@ -397,28 +400,37 @@ instance Error ScriptExecutionError where
       renderScriptWitnessIndex scriptWitness <> " is not a Plutus script \
       \witnessed tx input and cannot be spent using a Plutus script witness."
 
--- | The transaction validity interval is too far into the future.
---
--- Transactions with Plutus scripts need to have a validity interval that is
--- not so far in the future that we cannot reliably determine the UTC time
--- corresponding to the validity interval expressed in slot numbers.
---
--- This is because the Plutus scripts get given the transaction validity
--- interval in UTC time, so that they are not sensitive to slot lengths.
---
--- If either end of the validity interval is beyond the so called \"time
--- horizon\" then the consensus algorithm is not able to reliably determine
--- the relationship between slots and time. This is this situation in which
--- this error is reported. For the Cardano mainnet the time horizon is 36
--- hours beyond the current time. This effectively means we cannot submit
--- check or submit transactions that use Plutus scripts that have the end
--- of their validity interval more than 36 hours into the future.
---
-newtype TransactionValidityIntervalError =
-          TransactionValidityIntervalError Consensus.PastHorizonException
+  displayError (ScriptErrorMissingCostModel language) =
+      "No cost model was found for language " <> show language
+
+
+data EvalTxExecUnitsError =
+    -- | The transaction validity interval is too far into the future.
+    --
+    -- Transactions with Plutus scripts need to have a validity interval that is
+    -- not so far in the future that we cannot reliably determine the UTC time
+    -- corresponding to the validity interval expressed in slot numbers.
+    --
+    -- This is because the Plutus scripts get given the transaction validity
+    -- interval in UTC time, so that they are not sensitive to slot lengths.
+    --
+    -- If either end of the validity interval is beyond the so called \"time
+    -- horizon\" then the consensus algorithm is not able to reliably determine
+    -- the relationship between slots and time. This is this situation in which
+    -- this error is reported. For the Cardano mainnet the time horizon is 36
+    -- hours beyond the current time. This effectively means we cannot submit
+    -- check or submit transactions that use Plutus scripts that have the end
+    -- of their validity interval more than 36 hours into the future.
+    --
+    TransactionValidityIntervalError Consensus.PastHorizonException
+  | BasicValidationFailure (Alonzo.BasicFailure Ledger.StandardCrypto)
   deriving Show
 
-instance Error TransactionValidityIntervalError where
+instance Error EvalTxExecUnitsError where
+  displayError (BasicValidationFailure (Alonzo.UnknownTxIns txins)) =
+      "The transaction contains inputs that are not present in the UTxO: "
+   <> show (map (renderTxIn . fromShelleyTxIn) $ Set.toList txins)
+
   displayError (TransactionValidityIntervalError pastTimeHorizon) =
       "The transaction validity interval is too far in the future. "
    ++ "For this network it must not be more than "
@@ -453,7 +465,7 @@ evaluateTransactionExecutionUnits
   -> ProtocolParameters
   -> UTxO era
   -> TxBody era
-  -> Either TransactionValidityIntervalError
+  -> Either EvalTxExecUnitsError
             (Map ScriptWitnessIndex (Either ScriptExecutionError ExecutionUnits))
 evaluateTransactionExecutionUnits _eraInMode systemstart history pparams utxo txbody =
     case makeSignedTransaction [] txbody of
@@ -466,7 +478,7 @@ evaluateTransactionExecutionUnits _eraInMode systemstart history pparams utxo tx
           ShelleyBasedEraAlonzo  -> evalAlonzo era tx'
   where
     -- Pre-Alonzo eras do not support languages with execution unit accounting.
-    evalPreAlonzo :: Either TransactionValidityIntervalError
+    evalPreAlonzo :: Either EvalTxExecUnitsError
                             (Map ScriptWitnessIndex
                                  (Either ScriptExecutionError ExecutionUnits))
     evalPreAlonzo = Right Map.empty
@@ -477,7 +489,7 @@ evaluateTransactionExecutionUnits _eraInMode systemstart history pparams utxo tx
                => LedgerEraConstraints ledgerera
                => ShelleyBasedEra era
                -> Ledger.Tx ledgerera
-               -> Either TransactionValidityIntervalError
+               -> Either EvalTxExecUnitsError
                          (Map ScriptWitnessIndex
                               (Either ScriptExecutionError ExecutionUnits))
     evalAlonzo era tx =
@@ -489,10 +501,11 @@ evaluateTransactionExecutionUnits _eraInMode systemstart history pparams utxo tx
              systemstart
              (toAlonzoCostModels (protocolParamCostModels pparams))
         of Left  err   -> Left err
-           Right exmap -> Right (fromLedgerScriptExUnitsMap exmap)
+           Right (Left err) -> Left $ BasicValidationFailure err
+           Right (Right exmap) -> Right (fromLedgerScriptExUnitsMap exmap)
 
     toLedgerEpochInfo :: EraHistory mode
-                      -> EpochInfo (Either TransactionValidityIntervalError)
+                      -> EpochInfo (Either EvalTxExecUnitsError)
     toLedgerEpochInfo (EraHistory _ interpreter) =
         hoistEpochInfo (first TransactionValidityIntervalError . runExcept) $
           Consensus.interpreterToEpochInfo interpreter
@@ -524,7 +537,8 @@ evaluateTransactionExecutionUnits _eraInMode systemstart history pparams utxo tx
         Alonzo.InvalidTxIn     txin -> ScriptErrorTxInWithoutDatum txin'
                                          where txin' = fromShelleyTxIn txin
         Alonzo.MissingDatum      dh -> ScriptErrorWrongDatum (ScriptDataHash dh)
-        Alonzo.ValidationFailed err -> ScriptErrorEvaluationFailed err
+        Alonzo.ValidationFailedV1 err logs -> ScriptErrorEvaluationFailed err logs
+        Alonzo.ValidationFailedV2 err logs -> ScriptErrorEvaluationFailed err logs
         Alonzo.IncompatibleBudget _ -> ScriptErrorExecutionUnitsOverflow
 
         -- This is only possible for spending scripts and occurs when
@@ -536,6 +550,7 @@ evaluateTransactionExecutionUnits _eraInMode systemstart history pparams utxo tx
         -- build transactions in the API:
         Alonzo.MissingScript rdmrPtr ->
           impossible ("MissingScript " ++ show (fromAlonzoRdmrPtr rdmrPtr))
+        Alonzo.NoCostModel l -> ScriptErrorMissingCostModel l
 
     impossible detail = error $ "evaluateTransactionExecutionUnits: "
                              ++ "the impossible happened: " ++ detail
@@ -702,7 +717,7 @@ data TxBodyErrorAutoBalance =
 
        -- | The transaction validity interval is too far into the future.
        -- See 'TransactionValidityIntervalError' for details.
-     | TxBodyErrorValidityInterval TransactionValidityIntervalError
+     | TxBodyErrorEvalTxExecUnitsError EvalTxExecUnitsError
 
        -- | The minimum spendable UTxO threshold has not been met.
      | TxBodyErrorMinUTxONotMet
@@ -757,7 +772,7 @@ instance Error TxBodyErrorAutoBalance where
   displayError TxBodyErrorMissingParamCostPerWord =
       "The utxoCostPerWord protocol parameter is required but missing"
 
-  displayError (TxBodyErrorValidityInterval err) =
+  displayError (TxBodyErrorEvalTxExecUnitsError err) =
       displayError err
 
   displayError (TxBodyErrorMinUTxONotMet txout minUTxO) =
@@ -790,7 +805,7 @@ handleExUnitsErrors ScriptInvalid failuresMap exUnitsMap
         scriptFailures = filter isScriptErrorEvaluationFailed (Map.toList failuresMap)
         isScriptErrorEvaluationFailed :: (ScriptWitnessIndex, ScriptExecutionError) -> Bool
         isScriptErrorEvaluationFailed (_, e) = case e of
-            ScriptErrorEvaluationFailed _ -> True
+            ScriptErrorEvaluationFailed _ _ -> True
             _ -> True
 
 data BalancedTxBody era
@@ -852,7 +867,7 @@ makeTransactionBodyAutoBalance eraInMode systemstart history pparams
             -- 1,2,4 or 8 bytes?
         }
 
-    exUnitsMap <- first TxBodyErrorValidityInterval $
+    exUnitsMap <- first TxBodyErrorEvalTxExecUnitsError $
                     evaluateTransactionExecutionUnits
                       eraInMode
                       systemstart history

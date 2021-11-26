@@ -1,7 +1,7 @@
 cabal-version: 3.0
 
 name:                   cardano-api
-version:                1.30.0
+version:                1.31.0
 description:            The cardano api
 author:                 IOHK
 maintainer:             operations@iohk.io
@@ -93,6 +93,7 @@ library
                         Cardano.Api.TxSubmit.Types
                         Cardano.Api.Utils
                         Cardano.Api.Value
+                        Cardano.Api.ValueParser
 
   build-depends:        aeson             >= 1.5.6.0
                       , aeson-pretty      >= 0.8.5
@@ -114,6 +115,7 @@ library
                       , cardano-protocol-tpraos
                       , cardano-slotting
                       , cborg
+                      , compact-map
                       , contra-tracer
                       , containers
                       , cryptonite
@@ -131,6 +133,7 @@ library
                       , ouroboros-consensus-shelley
                       , ouroboros-network
                       , ouroboros-network-framework
+                      , parsec
                       , plutus-ledger-api
                       , prettyprinter
                       , scientific
@@ -160,7 +163,6 @@ library gen
                         Gen.Cardano.Crypto.Seed
                         Gen.Hedgehog.Roundtrip.Bech32
                         Gen.Hedgehog.Roundtrip.CBOR
-                        Gen.Tasty.Hedgehog.Group
 
   build-depends:        aeson             >= 1.5.6.0
                       , base16-bytestring
@@ -177,8 +179,6 @@ library gen
                       , hedgehog
                       , plutus-ledger-api
                       , cardano-ledger-shelley
-                      , tasty
-                      , tasty-hedgehog
                       , text
 
 test-suite cardano-api-test
@@ -208,7 +208,9 @@ test-suite cardano-api-test
                       , cardano-ledger-shelley
                       , cardano-ledger-shelley-test
                       , tasty
+                      , tasty-hedgehog
                       , tasty-quickcheck
+                      , tasty-th
                       , time
 
   other-modules:        Test.Cardano.Api.Crypto

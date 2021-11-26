@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 set -e
-# Unoffiical bash strict mode.
+# Unofficial bash strict mode.
 # See: http://redsymbol.net/articles/unofficial-bash-strict-mode/
 set -u
 set -o pipefail
@@ -233,16 +233,16 @@ for N in ${BFT_NODES_N}; do
     --secret byron/payment-keys.00$((${N} - 1)).key \
 
   cardano-cli byron key signing-key-address \
-    --testnet-magic 42 \
+    --testnet-magic ${NETWORK_MAGIC} \
     --secret byron/payment-keys.00$((${N} - 1)).key > byron/address-00$((${N} - 1))
 
   cardano-cli byron key signing-key-address \
-    --testnet-magic 42 \
+    --testnet-magic ${NETWORK_MAGIC} \
     --secret byron/genesis-keys.00$((${N} - 1)).key > byron/genesis-address-00$((${N} - 1))
 
   cardano-cli byron transaction issue-genesis-utxo-expenditure \
     --genesis-json byron/genesis.json \
-    --testnet-magic 42 \
+    --testnet-magic ${NETWORK_MAGIC} \
     --tx tx$((${N} - 1)).tx \
     --wallet-key byron/delegate-keys.00$((${N} - 1)).key \
     --rich-addr-from "$(head -n 1 byron/genesis-address-00$((${N} - 1)))" \
@@ -253,7 +253,7 @@ done
 # Update Proposal and votes
 cardano-cli byron governance create-update-proposal \
             --filepath update-proposal \
-            --testnet-magic 42 \
+            --testnet-magic "${NETWORK_MAGIC}" \
             --signing-key byron/delegate-keys.000.key \
             --protocol-version-major 1 \
             --protocol-version-minor 0 \
@@ -266,7 +266,7 @@ cardano-cli byron governance create-update-proposal \
 for N in ${BFT_NODES_N}; do
     cardano-cli byron governance create-proposal-vote \
                 --proposal-filepath update-proposal \
-                --testnet-magic 42 \
+                --testnet-magic ${NETWORK_MAGIC} \
                 --signing-key byron/delegate-keys.00$((${N} - 1)).key \
                 --vote-yes \
                 --output-filepath update-vote.00$((${N} - 1))
@@ -274,7 +274,7 @@ done
 
 cardano-cli byron governance create-update-proposal \
             --filepath update-proposal-1 \
-            --testnet-magic 42 \
+            --testnet-magic ${NETWORK_MAGIC} \
             --signing-key byron/delegate-keys.000.key \
             --protocol-version-major 2 \
             --protocol-version-minor 0 \
@@ -287,7 +287,7 @@ cardano-cli byron governance create-update-proposal \
 for N in ${BFT_NODES_N}; do
     cardano-cli byron governance create-proposal-vote \
                 --proposal-filepath update-proposal-1 \
-                --testnet-magic 42 \
+                --testnet-magic ${NETWORK_MAGIC} \
                 --signing-key byron/delegate-keys.00$((${N} - 1)).key \
                 --vote-yes \
                 --output-filepath update-vote-1.00$((${N} - 1))
@@ -302,10 +302,13 @@ echo "====================================================================="
 
 # Set up our template
 mkdir shelley
-cardano-cli genesis create --testnet-magic 42 --genesis-dir shelley
+
+# Copy the QA testnet alonzo genesis which is equivalent to the mainnet
+
+cardano-cli genesis create --testnet-magic ${NETWORK_MAGIC} --genesis-dir shelley
 
 # Then edit the genesis.spec.json ...
-
+cp ../configuration/cardano/shelley_qa-alonzo-genesis.json shelley/genesis.alonzo.spec.json
 # We're going to use really quick epochs (300 seconds), by using short slots 0.2s
 # and K=10, but we'll keep long KES periods so we don't have to bother
 # cycling KES keys
@@ -315,6 +318,9 @@ sed -i shelley/genesis.spec.json \
     -e 's/"securityParam": 2160/"securityParam": 10/' \
     -e 's/"epochLength": 432000/"epochLength": 500/' \
     -e 's/"maxLovelaceSupply": 0/"maxLovelaceSupply": 1000000000000/' \
+    -e 's/"minFeeA": 1/"minFeeA": 44/' \
+    -e 's/"minFeeB": 0/"minFeeB": 155381/' \
+    -e 's/"minUTxOValue": 0/"minUTxOValue": 1000000/' \
     -e 's/"decentralisationParam": 1.0/"decentralisationParam": 0.7/' \
     -e 's/"major": 0/"major": 5/' \
     -e 's/"rho": 0.0/"rho": 0.1/' \
@@ -324,7 +330,7 @@ sed -i shelley/genesis.spec.json \
 # Now generate for real:
 
 cardano-cli genesis create \
-    --testnet-magic 42 \
+    --testnet-magic ${NETWORK_MAGIC} \
     --genesis-dir shelley/ \
     --gen-genesis-keys ${NUM_BFT_NODES} \
     --gen-utxo-keys 1
@@ -434,13 +440,13 @@ for ADDR in ${ADDRS}; do
   cardano-cli address build \
       --payment-verification-key-file addresses/${ADDR}.vkey \
       --stake-verification-key-file addresses/${ADDR}-stake.vkey \
-      --testnet-magic 42 \
+      --testnet-magic ${NETWORK_MAGIC} \
       --out-file addresses/${ADDR}.addr
 
   # Stake addresses
   cardano-cli stake-address build \
       --stake-verification-key-file addresses/${ADDR}-stake.vkey \
-      --testnet-magic 42 \
+      --testnet-magic ${NETWORK_MAGIC} \
       --out-file addresses/${ADDR}-stake.addr
 
   # Stake addresses registration certs
@@ -478,7 +484,7 @@ echo "====================================================================="
 for NODE in ${POOL_NODES}; do
 
   cardano-cli stake-pool registration-certificate \
-    --testnet-magic 42 \
+    --testnet-magic ${NETWORK_MAGIC} \
     --pool-pledge 0 --pool-cost 0 --pool-margin 0 \
     --cold-verification-key-file             ${NODE}/shelley/operator.vkey \
     --vrf-verification-key-file              ${NODE}/shelley/vrf.vkey \
@@ -632,8 +638,6 @@ if [ "$1" = "alonzo" ]; then
       -e 's/LastKnownBlockVersion-Major: 1/LastKnownBlockVersion-Major: 5/'
 
   # Copy the cost model
-  mkdir ${ROOT}/shelley/alonzo
-  cp configuration/cardano/alonzo/shelley_qa_cost-model.json ${ROOT}/shelley/alonzo/costmodel.json
   echo "Nodes will start in Alonzo era from epoch 0"
 
 elif [ "$1" = "mary" ]; then

@@ -7,6 +7,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 {-# OPTIONS_GHC -Wno-orphans #-}
@@ -20,10 +21,13 @@ import           Data.Aeson (FromJSON (..), ToJSON (..), object, (.!=), (.:), (.
 import qualified Data.Aeson as Aeson
 import           Data.Aeson.Types (FromJSONKey (..), ToJSONKey (..), toJSONKeyText)
 import qualified Data.ByteString.Base16 as B16
+import           Data.Compact.VMap (VMap)
+import qualified Data.Compact.VMap as VMap
 import qualified Data.Map.Strict as Map
 import           Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text
+import           Data.Word (Word64)
 
 import           Control.Applicative
 import           Control.Iterate.SetAlgebra (BiMap (..), Bimap)
@@ -31,6 +35,7 @@ import           Control.Iterate.SetAlgebra (BiMap (..), Bimap)
 import           Cardano.Api.Json
 import           Cardano.Ledger.BaseTypes (StrictMaybe (..), strictMaybeToMaybe)
 import qualified Cardano.Ledger.BaseTypes as Ledger
+import qualified Cardano.Ledger.Compactible as Ledger
 import           Cardano.Ledger.Crypto (StandardCrypto)
 import           Cardano.Slotting.Slot (SlotNo (..))
 import           Cardano.Slotting.Time (SystemStart (..))
@@ -48,9 +53,9 @@ import qualified Cardano.Ledger.Core as Ledger
 import qualified Cardano.Ledger.Crypto as Crypto
 import qualified Cardano.Ledger.Era as Ledger
 import qualified Cardano.Ledger.Mary.Value as Mary
+import qualified Cardano.Ledger.PoolDistr as Ledger
 import qualified Cardano.Ledger.SafeHash as SafeHash
 import qualified Cardano.Ledger.Shelley.Constraints as Shelley
-import qualified Cardano.Protocol.TPraos as Praos
 import qualified Ouroboros.Consensus.Shelley.Eras as Consensus
 import qualified Cardano.Ledger.Shelley.API as Shelley
 import qualified Cardano.Ledger.Shelley.EpochBoundary as ShelleyEpoch
@@ -230,7 +235,7 @@ instance Crypto.Crypto crypto => ToJSON (Shelley.TxIn crypto) where
 instance Crypto.Crypto crypto => ToJSONKey (Shelley.TxIn crypto) where
   toJSONKey = toJSONKeyText txInToText
 
-txInToText :: Crypto.Crypto crypto => Shelley.TxIn crypto -> Text
+txInToText :: Shelley.TxIn crypto -> Text
 txInToText (Shelley.TxIn (Shelley.TxId txidHash) ix) =
   hashToText (SafeHash.extractHash txidHash)
     <> Text.pack "#"
@@ -264,6 +269,13 @@ instance Crypto.Crypto crypto => ToJSON (Shelley.SnapShot crypto) where
 instance Crypto.Crypto crypto => ToJSON (Shelley.Stake crypto) where
   toJSON (Shelley.Stake s) = toJSON s
 
+instance (VMap.Vector vp a, VMap.Vector vb k, ToJSON k, ToJSON a, ToJSONKey k)
+        => ToJSON (VMap vb vp k a) where
+  toJSON vm = toJSON (VMap.toMap vm)
+
+instance ToJSON (Shelley.CompactForm Shelley.Coin) where
+  toJSON cc = toJSON (Ledger.fromCompact cc)
+
 instance Crypto.Crypto crypto => ToJSON (Shelley.RewardUpdate crypto) where
   toJSON rUpdate = object [ "deltaT" .= Shelley.deltaT rUpdate
                           , "deltaR" .= Shelley.deltaR rUpdate
@@ -279,13 +291,13 @@ instance Crypto.Crypto crypto => ToJSON (Shelley.PulsingRewUpdate crypto) where
 instance ToJSON Shelley.DeltaCoin where
   toJSON (Shelley.DeltaCoin i) = toJSON i
 
-instance Crypto.Crypto crypto => ToJSON (Praos.PoolDistr crypto) where
-  toJSON (Praos.PoolDistr m) = toJSON m
+instance Crypto.Crypto crypto => ToJSON (Ledger.PoolDistr crypto) where
+  toJSON (Ledger.PoolDistr m) = toJSON m
 
-instance Crypto.Crypto crypto => ToJSON (Praos.IndividualPoolStake crypto) where
+instance Crypto.Crypto crypto => ToJSON (Ledger.IndividualPoolStake crypto) where
   toJSON indivPoolStake =
-    object [ "individualPoolStake" .= Praos.individualPoolStake indivPoolStake
-           , "individualPoolStakeVrf" .= Praos.individualPoolStakeVrf indivPoolStake
+    object [ "individualPoolStake" .= Ledger.individualPoolStake indivPoolStake
+           , "individualPoolStakeVrf" .= Ledger.individualPoolStakeVrf indivPoolStake
            ]
 
 instance Crypto.Crypto crypto => ToJSON (Shelley.Reward crypto) where
@@ -304,8 +316,28 @@ instance Crypto.Crypto c => ToJSON (SafeHash.SafeHash c a) where
 
 -----
 
-instance ToJSON Alonzo.ExUnits
-deriving instance FromJSON Alonzo.ExUnits
+deriving instance ToJSON a => ToJSON (Alonzo.ExUnits' a)
+deriving instance FromJSON a => FromJSON (Alonzo.ExUnits' a)
+
+instance ToJSON Alonzo.ExUnits where
+  toJSON Alonzo.ExUnits {Alonzo.exUnitsMem, Alonzo.exUnitsSteps} =
+    object [ "exUnitsMem" .= toJSON exUnitsMem
+           , "exUnitsSteps" .= toJSON exUnitsSteps
+           ]
+
+instance FromJSON Alonzo.ExUnits where
+  parseJSON = Aeson.withObject "exUnits" $ \o -> do
+    mem <- o .: "exUnitsMem"
+    steps <- o .: "exUnitsSteps"
+    bmem <- checkWord64Bounds mem
+    bsteps <- checkWord64Bounds steps
+    return $ Alonzo.ExUnits bmem bsteps
+    where
+      checkWord64Bounds n =
+        if n >= fromIntegral (minBound @Word64)
+            && n <= fromIntegral (maxBound @Word64)
+        then pure n
+        else fail ("Unit out of bounds for Word64: " <> show n)
 
 instance ToJSON Alonzo.Prices where
   toJSON Alonzo.Prices { Alonzo.prSteps, Alonzo.prMem } =
@@ -335,6 +367,7 @@ deriving newtype instance ToJSON Alonzo.CostModel
 
 languageToText :: Alonzo.Language -> Text
 languageToText Alonzo.PlutusV1 = "PlutusV1"
+languageToText Alonzo.PlutusV2 = "PlutusV2"
 
 languageFromText :: MonadFail m => Text -> m Alonzo.Language
 languageFromText "PlutusV1" = pure Alonzo.PlutusV1

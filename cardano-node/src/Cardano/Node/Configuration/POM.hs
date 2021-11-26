@@ -1,11 +1,16 @@
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 {-# OPTIONS_GHC -Wno-noncanonical-monoid-instances #-}
 
 module Cardano.Node.Configuration.POM
   ( NodeConfiguration (..)
+  , NetworkP2PMode (..)
+  , SomeNetworkP2PMode (..)
   , PartialNodeConfiguration(..)
   , defaultPartialNodeConfiguration
   , lastOption
@@ -18,9 +23,12 @@ where
 
 import           Cardano.Prelude
 import           Prelude (String)
+import qualified GHC.Show as Show
 
 import           Control.Monad (fail)
 import           Data.Aeson
+import qualified Data.Aeson.Types as Aeson
+import           Data.Time.Clock (DiffTime)
 import           Data.Yaml (decodeFileThrow)
 import           Generic.Data (gmappend)
 import           Generic.Data.Orphans ()
@@ -33,9 +41,33 @@ import           Cardano.Crypto (RequiresNetworkMagic (..))
 import           Cardano.Node.Protocol.Types (Protocol (..))
 import           Cardano.Node.Types
 import           Cardano.Tracing.Config
+import           Ouroboros.Consensus.Mempool.API (MempoolCapacityBytesOverride (..), MempoolCapacityBytes (..))
 import           Ouroboros.Consensus.Storage.LedgerDB.DiskPolicy (SnapshotInterval (..))
 import           Ouroboros.Network.Block (MaxSlotNo (..))
 import           Ouroboros.Network.NodeToNode (DiffusionMode (..))
+import qualified Ouroboros.Consensus.Node as Consensus ( NetworkP2PMode (..) )
+
+data NetworkP2PMode = EnabledP2PMode | DisabledP2PMode
+  deriving (Eq, Show, Generic)
+
+data SomeNetworkP2PMode where
+    SomeNetworkP2PMode :: forall p2p.
+                          Consensus.NetworkP2PMode p2p
+                       -> SomeNetworkP2PMode
+
+instance Eq SomeNetworkP2PMode where
+    (==) (SomeNetworkP2PMode Consensus.EnabledP2PMode)
+         (SomeNetworkP2PMode Consensus.EnabledP2PMode)
+       = True
+    (==) (SomeNetworkP2PMode Consensus.DisabledP2PMode)
+         (SomeNetworkP2PMode Consensus.DisabledP2PMode)
+       = True
+    (==) _ _
+       = False
+
+instance Show SomeNetworkP2PMode where
+    show (SomeNetworkP2PMode mode@Consensus.EnabledP2PMode)  = show mode
+    show (SomeNetworkP2PMode mode@Consensus.DisabledP2PMode) = show mode
 
 data NodeConfiguration
   = NodeConfiguration
@@ -83,6 +115,26 @@ data NodeConfiguration
        , ncLoggingSwitch  :: !Bool
        , ncLogMetrics     :: !Bool
        , ncTraceConfig    :: !TraceOptions
+
+       , ncMaybeMempoolCapacityOverride :: !(Maybe MempoolCapacityBytesOverride)
+
+         -- | Protocol idleness timeout, see
+         -- 'Ouroboros.Network.Diffusion.daProtocolIdleTimeout'.
+         --
+       , ncProtocolIdleTimeout   :: DiffTime
+         -- | Wait time timeout, see
+         -- 'Ouroboros.Netowrk.Diffusion.daTimeWaitTimeout'.
+         --
+       , ncTimeWaitTimeout       :: DiffTime
+
+         -- P2P governor targets
+       , ncTargetNumberOfRootPeers        :: Int
+       , ncTargetNumberOfKnownPeers       :: Int
+       , ncTargetNumberOfEstablishedPeers :: Int
+       , ncTargetNumberOfActivePeers      :: Int
+
+         -- Enable experimental P2P mode
+       , ncEnableP2P :: SomeNetworkP2PMode
        } deriving (Eq, Show)
 
 
@@ -102,7 +154,7 @@ data PartialNodeConfiguration
        , pncShutdownIPC     :: !(Last (Maybe Fd))
        , pncShutdownOnSlotSynced :: !(Last MaxSlotNo)
 
-          -- Protocol-specific parameters:
+         -- Protocol-specific parameters:
        , pncProtocolConfig :: !(Last NodeProtocolConfiguration)
 
          -- Node parameters, not protocol-specific:
@@ -119,6 +171,22 @@ data PartialNodeConfiguration
        , pncLoggingSwitch  :: !(Last Bool)
        , pncLogMetrics     :: !(Last Bool)
        , pncTraceConfig    :: !(Last TraceOptions)
+
+         -- Configuration for testing purposes
+       , pncMaybeMempoolCapacityOverride :: !(Last MempoolCapacityBytesOverride)
+
+         -- Network timeouts
+       , pncProtocolIdleTimeout   :: !(Last DiffTime)
+       , pncTimeWaitTimeout       :: !(Last DiffTime)
+
+         -- P2P governor targets
+       , pncTargetNumberOfRootPeers        :: !(Last Int)
+       , pncTargetNumberOfKnownPeers       :: !(Last Int)
+       , pncTargetNumberOfEstablishedPeers :: !(Last Int)
+       , pncTargetNumberOfActivePeers      :: !(Last Int)
+
+         -- Enable experimental P2P mode
+       , pncEnableP2P :: !(Last NetworkP2PMode)
        } deriving (Eq, Generic, Show)
 
 instance AdjustFilePaths PartialNodeConfiguration where
@@ -167,6 +235,26 @@ instance FromJSON PartialNodeConfiguration where
                                                                <*> parseShelleyProtocol v
                                                                <*> parseAlonzoProtocol v
                                                                <*> parseHardForkProtocol v)
+      pncMaybeMempoolCapacityOverride <- Last <$> parseMempoolCapacityBytesOverride v
+
+      -- Network timeouts
+      pncProtocolIdleTimeout   <- Last <$> v .:? "ProtocolIdleTimeout"
+      pncTimeWaitTimeout       <- Last <$> v .:? "TimeWaitTimeout"
+
+      -- P2P Governor parameters, with conservative defaults.
+      pncTargetNumberOfRootPeers        <- Last <$> v .:? "TargetNumberOfRootPeers"
+      pncTargetNumberOfKnownPeers       <- Last <$> v .:? "TargetNumberOfKnownPeers"
+      pncTargetNumberOfEstablishedPeers <- Last <$> v .:? "TargetNumberOfEstablishedPeers"
+      pncTargetNumberOfActivePeers      <- Last <$> v .:? "TargetNumberOfActivePeers"
+
+      -- Enable P2P switch
+      p2pSwitch <- v .:? "EnableP2P" .!= Just False
+      let pncEnableP2P =
+            case p2pSwitch of
+              Nothing    -> mempty
+              Just False -> Last $ Just DisabledP2PMode
+              Just True  -> Last $ Just EnabledP2PMode
+
       pure PartialNodeConfiguration {
              pncProtocolConfig
            , pncSocketPath
@@ -188,8 +276,28 @@ instance FromJSON PartialNodeConfiguration where
            , pncValidateDB = mempty
            , pncShutdownIPC = mempty
            , pncShutdownOnSlotSynced = mempty
+           , pncMaybeMempoolCapacityOverride
+           , pncProtocolIdleTimeout
+           , pncTimeWaitTimeout
+           , pncTargetNumberOfRootPeers
+           , pncTargetNumberOfKnownPeers
+           , pncTargetNumberOfEstablishedPeers
+           , pncTargetNumberOfActivePeers
+           , pncEnableP2P
            }
     where
+      parseMempoolCapacityBytesOverride v = parseNoOverride <|> parseOverride
+        where
+          parseNoOverride = fmap (MempoolCapacityBytesOverride . MempoolCapacityBytes) <$> v .:? "MempoolCapacityBytesOverride"
+          parseOverride = do
+            maybeString :: Maybe String <- v .:? "MempoolCapacityBytesOverride"
+            case maybeString of
+              Just "NoOverride" -> return (Just NoMempoolCapacityBytesOverride)
+              Just invalid ->  fmap Just . Aeson.parseFail $
+                    "Invalid value for 'MempoolCapacityBytesOverride'.  \
+                    \Expecting byte count or NoOverride.  Value was: " <> show invalid
+              Nothing -> return Nothing
+
       parseByronProtocol v = do
         primary   <- v .:? "ByronGenesisFile"
         secondary <- v .:? "GenesisFile"
@@ -309,6 +417,14 @@ defaultPartialNodeConfiguration =
     , pncMaxConcurrencyDeadline = mempty
     , pncLogMetrics = mempty
     , pncTraceConfig = mempty
+    , pncMaybeMempoolCapacityOverride = mempty
+    , pncProtocolIdleTimeout   = Last (Just 5)
+    , pncTimeWaitTimeout       = Last (Just 60)
+    , pncTargetNumberOfRootPeers        = Last (Just 100)
+    , pncTargetNumberOfKnownPeers       = Last (Just 100)
+    , pncTargetNumberOfEstablishedPeers = Last (Just 50)
+    , pncTargetNumberOfActivePeers      = Last (Just 20)
+    , pncEnableP2P                      = Last (Just DisabledP2PMode)
     }
 
 lastOption :: Parser a -> Parser (Last a)
@@ -332,6 +448,28 @@ makeNodeConfiguration pnc = do
   traceConfig <- lastToEither "Missing TraceConfig" $ pncTraceConfig pnc
   diffusionMode <- lastToEither "Missing DiffusionMode" $ pncDiffusionMode pnc
   snapshotInterval <- lastToEither "Missing SnapshotInterval" $ pncSnapshotInterval pnc
+
+  ncTargetNumberOfRootPeers <-
+    lastToEither "Missing TargetNumberOfRootPeers"
+    $ pncTargetNumberOfRootPeers pnc
+  ncTargetNumberOfKnownPeers <-
+    lastToEither "Missing TargetNumberOfKnownPeers"
+    $ pncTargetNumberOfKnownPeers pnc
+  ncTargetNumberOfEstablishedPeers <-
+    lastToEither "Missing TargetNumberOfEstablishedPeers"
+    $ pncTargetNumberOfEstablishedPeers pnc
+  ncTargetNumberOfActivePeers <-
+    lastToEither "Missing TargetNumberOfActivePeers"
+    $ pncTargetNumberOfActivePeers pnc
+  ncProtocolIdleTimeout <-
+    lastToEither "Missing ProtocolIdleTimeout"
+    $ pncProtocolIdleTimeout pnc
+  ncTimeWaitTimeout <-
+    lastToEither "Missing TimeWaitTimeout"
+    $ pncTimeWaitTimeout pnc
+  enableP2P <-
+    lastToEither "Missing EnableP2P"
+    $ pncEnableP2P pnc
 
   testEnableDevelopmentNetworkProtocols <-
     lastToEither "Missing TestEnableDevelopmentNetworkProtocols" $
@@ -358,6 +496,16 @@ makeNodeConfiguration pnc = do
              , ncLogMetrics = logMetrics
              , ncTraceConfig = if loggingSwitch then traceConfig
                                                 else TracingOff
+             , ncMaybeMempoolCapacityOverride = getLast $ pncMaybeMempoolCapacityOverride pnc
+             , ncProtocolIdleTimeout
+             , ncTimeWaitTimeout
+             , ncTargetNumberOfRootPeers
+             , ncTargetNumberOfKnownPeers
+             , ncTargetNumberOfEstablishedPeers
+             , ncTargetNumberOfActivePeers
+             , ncEnableP2P = case enableP2P of
+                 EnabledP2PMode  -> SomeNetworkP2PMode Consensus.EnabledP2PMode
+                 DisabledP2PMode -> SomeNetworkP2PMode Consensus.DisabledP2PMode
              }
 
 ncProtocol :: NodeConfiguration -> Protocol

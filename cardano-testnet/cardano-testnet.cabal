@@ -1,7 +1,7 @@
 cabal-version: 3.0
 
 name:                   cardano-testnet
-version:                1.30.0
+version:                1.31.0
 description:            The cardano full node
 author:                 IOHK
 maintainer:             operations@iohk.io
@@ -36,6 +36,7 @@ library
   build-depends:        aeson
                       , base16-bytestring
                       , bytestring
+                      , cardano-node
                       , containers
                       , directory
                       , exceptions
@@ -44,6 +45,7 @@ library
                       , hedgehog-extras
                       , http-client
                       , http-types
+                      , ouroboros-network
                       , process
                       , random
                       , resourcet
@@ -101,7 +103,11 @@ test-suite cardano-testnet-tests
   type:                 exitcode-stdio-1.0
 
   build-depends:        aeson
+                      , base16-bytestring
+                      , bytestring
+                      , cardano-api
                       , cardano-testnet
+                      , containers
                       , directory
                       , hedgehog
                       , hedgehog-extras
@@ -112,6 +118,7 @@ test-suite cardano-testnet-tests
                       , unordered-containers
 
   other-modules:        Spec.Plutus.Direct.ScriptContextEquality
+                        Spec.Plutus.Direct.ScriptContextEqualityMint
                         Spec.Plutus.Direct.TxInLockingPlutus
                         Spec.Plutus.Script.TxInLockingPlutus
                         Spec.Plutus.SubmitApi.TxInLockingPlutus

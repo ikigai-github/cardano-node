@@ -31,20 +31,14 @@ main :: IO ()
 main = do
   -- Get socket path from CLI argument.
   configFilePath : socketPath : xs <- getArgs
-  byronSlotLength <- case xs of
-        byronSlotLengthStr : _ -> return (read byronSlotLengthStr)
-        _ -> do
-          let l = 21600
-          putStrLn $ "Using default byron slots per epoch: " <> show l
-          return l
   blockCount <- fmap (either (error . T.unpack . renderFoldBlocksError) id) $ runExceptT $ foldBlocks
     configFilePath
-    (CardanoModeParams (EpochSlots byronSlotLength))
     socketPath
     FullValidation
     (0 :: Int) -- We just use a count of the blocks as the current state
     (\_env
       !ledgerState
+      _
       (BlockInMode (Block (BlockHeader _slotNo _blockHeaderHash (BlockNo blockNoI)) _transactions) _era)
       blockCount -> do
         case ledgerState of

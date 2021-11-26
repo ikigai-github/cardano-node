@@ -42,8 +42,10 @@ import qualified Cardano.Ledger.Alonzo.PlutusScriptApi as Alonzo
 import qualified Cardano.Ledger.Alonzo.Tx as Alonzo
 import qualified Cardano.Ledger.Alonzo.TxInfo as Alonzo
 import qualified Cardano.Ledger.Alonzo.TxWitness as Alonzo
+import           Cardano.Ledger.BaseTypes (ProtVer)
+import qualified Cardano.Ledger.TxIn as Ledger
+
 import           Cardano.Ledger.Crypto (StandardCrypto)
-import           Cardano.Protocol.TPraos (ProtVer)
 import           Cardano.Slotting.EpochInfo (EpochInfo, hoistEpochInfo)
 import           Cardano.Slotting.Time (SystemStart)
 import           Control.Monad.Trans.Except
@@ -56,9 +58,8 @@ import qualified Plutus.V1.Ledger.DCert as Plutus
 import qualified PlutusTx
 import qualified PlutusTx.AssocMap as AMap
 import           PlutusTx.IsData.Class
-import           PlutusTx.Prelude hiding (Semigroup (..), unless)
+import           PlutusTx.Prelude hiding (Semigroup (..), unless, (.))
 import qualified PlutusTx.Prelude as P
-import qualified Cardano.Ledger.Shelley.TxBody as Shelley
 
 -- Description
 -- MyCustomRedeemer mimics the ScriptContext. MyCustomRedeemer is built via reading
@@ -227,6 +228,9 @@ dummyPOSIXTimeRange = Plutus.from $ Plutus.POSIXTime 42
 dummyScriptPurpose :: Maybe Plutus.ScriptPurpose
 dummyScriptPurpose = Nothing
 
+newtype TransactionValidityIntervalError
+ = TransactionValidityIntervalError Consensus.PastHorizonException deriving Show
+
 data ScriptContextError = NoScriptsInByronEra
                         | NoScriptsInEra
                         | ReadTxBodyError (FileError TextEnvelopeError)
@@ -253,13 +257,13 @@ txToCustomRedeemer _ _ _ _ _ (ByronTx _) = Left NoScriptsInByronEra
 txToCustomRedeemer sbe pparams utxo eInfo sStart (ShelleyTx ShelleyBasedEraAlonzo ledgerTx) = do
   let txBody = Alonzo.body ledgerTx
       witness = Alonzo.wits ledgerTx
-      Alonzo.TxWitness _ _ _ _ rdmrs = witness
-      redeemerPtrs = Map.toList $ Alonzo.unRedeemers rdmrs
+      Alonzo.TxWitness _ _ _ _ _rdmrs = witness
+      _redeemerPtrs = Map.toList $ Alonzo.unRedeemers _rdmrs
       ledgerUTxO = toLedgerUTxO ShelleyBasedEraAlonzo utxo
       scriptsNeeded = Alonzo.scriptsNeeded ledgerUTxO ledgerTx
       sPurpose = case scriptsNeeded of
                    [(p ,_)] -> Alonzo.transScriptPurpose p
-                   _ -> Prelude.error $ "More than one redeemer ptr: " <> show redeemerPtrs
+                   needed -> Prelude.error $ "More than one redeemer ptr: " <> show needed
       mTxIns = Prelude.map (Alonzo.txInfoIn ledgerUTxO) . Set.toList $ Alonzo.inputs txBody
       mTouts = Prelude.map Alonzo.txInfoOut $ seqToList $ Alonzo.outputs txBody
       minted = Alonzo.transValue $ Alonzo.mint txBody
@@ -372,7 +376,7 @@ getSbe (ShelleyBasedEra sbe) = return sbe
 
 -- Used in roundtrip testing
 
-fromPlutusTxId :: Plutus.TxId -> Shelley.TxId StandardCrypto
+fromPlutusTxId :: Plutus.TxId -> Ledger.TxId StandardCrypto
 fromPlutusTxId (Plutus.TxId builtInBs) =
   case deserialiseFromRawBytes AsTxId $ fromBuiltin builtInBs of
     Just txidHash -> toShelleyTxId txidHash
