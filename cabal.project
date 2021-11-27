@@ -298,6 +298,9 @@ constraints:
     -- that dependency
   , network >= 3.1.1.0
 
+constraints: archive-sig +development
+constraints: archive-libarchive +development
+
 package comonad
   flags: -test-doctests
 
