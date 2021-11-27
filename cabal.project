@@ -298,8 +298,6 @@ constraints:
     -- that dependency
   , network >= 3.1.1.0
 
-constraints: archive-sig +development
-constraints: archive-libarchive +development
 
 package comonad
   flags: -test-doctests
@@ -308,5 +306,5 @@ package cardano-ledger-alonzo-test
   tests: False
 
 allow-newer:
-  monoidal-containers:aeson,
-  size-based:template-haskell
+  monoidal-containers:aeson
+, size-based:template-haskell
