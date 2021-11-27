@@ -306,5 +306,5 @@ package cardano-ledger-alonzo-test
   tests: False
 
 allow-newer:
-  monoidal-containers:aeson
-, size-based:template-haskell
+  monoidal-containers:aeson,
+  size-based:template-haskell
